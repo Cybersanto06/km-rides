@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "KM Rides",
+  "short_name": "KM Rides",
+  "description": "Request a ride in Kaoma and negotiate your fare with drivers.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101828",
+  "theme_color": "#FFFFFF",
+  "lang": "en",
+  "categories": ["travel", "transportation"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

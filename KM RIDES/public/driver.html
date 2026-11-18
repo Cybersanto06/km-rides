@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>KM Rides | Driver</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+    :root { --bg: #0F1115; --surface: #FFFFFF; --ink: #111827; --muted: #6B7280; --lime: #B5E048; --line: #E5E7EB; --danger: #EF4444; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Manrope', sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    /* SCROLLING FIX: Allow body to scroll naturally */
+    html, body { height: 100%; width: 100%; background-color: var(--surface); }
+    body { display: flex; flex-direction: column; position: relative; overflow-y: auto; }
+
+    /* AUTH */
+    #authContainer { position: absolute; inset: 0; background: #fff; z-index: 5000; display: flex; flex-direction: column; overflow-y: auto; }
+    #googleScreen { padding: 40px 24px; display: flex; flex-direction: column; height: 100%; }
+    #googleScreen.hidden { display: none; }
+    #detailsScreen { position: absolute; inset: 0; padding: 40px 24px; display: none; flex-direction: column; background: #fff; overflow-y: auto; }
+    #detailsScreen.active { display: flex; }
+
+    .auth-logo { font-size: 32px; font-weight: 800; color: var(--ink); margin-bottom: 8px; letter-spacing: -1px; }
+    .auth-logo span { color: var(--lime); }
+    .auth-sub { color: var(--muted); font-size: 15px; font-weight: 600; margin-bottom: 40px; }
+    
+    .google-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; color: var(--ink); cursor: pointer; margin-bottom: 24px; }
+    .google-btn:hover { background: #F9FAFB; }
+    .google-btn img { width: 22px; height: 22px; }
+
+    .back-btn { background: none; border: none; font-size: 15px; font-weight: 700; color: var(--muted); cursor: pointer; padding: 0; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; width: fit-content; }
+    .input-group { margin-bottom: 20px; }
+    .input-label { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
+    .thick-input { width: 100%; background: #F3F4F6; border: 2px solid transparent; border-radius: 12px; padding: 18px; font-size: 16px; font-weight: 700; color: var(--ink); outline: none; }
+    .thick-input:focus { background: #fff; border-color: var(--ink); }
+    .btn-primary { width: 100%; background: var(--ink); color: #fff; border: none; border-radius: 14px; padding: 18px; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+    .status-msg { color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 8px; text-align: center; }
+
+    /* MAIN UI */
+    .app-viewport { flex: 1; display: flex; flex-direction: column; background: #FAFAFA; }
+    .header { padding: 20px 24px; background: #fff; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+    .brand-logo { background: var(--ink); color: #fff; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 16px; }
+    .brand-logo span { color: var(--lime); }
+    .toggle-wrapper { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 14px; }
+    .toggle-switch { width: 50px; height: 28px; background: #D1D5DB; border-radius: 20px; position: relative; cursor: pointer; transition: 0.3s; }
+    .toggle-switch.on { background: var(--lime); }
+    .toggle-switch::after { content: ''; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch.on::after { transform: translateX(22px); }
+
+    /* MAP */
+    #map { width: 100%; height: 350px; background: #E5E7EB; z-index: 1; position: relative; }
+    
+    .map-controls { position: absolute; bottom: 16px; right: 16px; z-index: 500; }
+    .follow-btn { background: #fff; border: 1px solid var(--line); border-radius: 50%; width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; }
+    .follow-btn svg { width: 24px; height: 24px; stroke: var(--ink); }
+    .follow-btn.active { background: var(--lime); border-color: var(--lime); }
+
+    /* CUSTOM MAP MARKERS */
+    .driver-marker { width: 20px; height: 20px; background: #2f7bff; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.4); position: relative; }
+    .driver-marker::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; background: #2f7bff; animation: pulse 2s infinite; z-index: -1; opacity: 0.5; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(2.5); opacity: 0; } }
+    .pickup-marker { width: 24px; height: 24px; background: var(--lime); border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+    .bottom-panel { background: #fff; border-radius: 24px 24px 0 0; padding: 24px; box-shadow: 0 -8px 30px rgba(0,0,0,0.08); z-index: 10; margin-top: -20px; position: relative; flex: 1; min-height: 400px; }
+    .panel-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+    
+    .request-card { border: 2px solid var(--ink); border-radius: 16px; padding: 20px; margin-bottom: 16px; background: #fff; }
+    .rc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .rc-passenger { font-size: 18px; font-weight: 800; }
+    .rc-phone { color: var(--ink); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; }
+    .rc-route { font-size: 14px; font-weight: 600; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+    
+    .bid-input-row { display: flex; gap: 10px; }
+    .bid-input { flex: 1; background: #F3F4F6; border: 2px solid transparent; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 800; outline: none; }
+    .btn-bid { background: var(--lime); border: none; border-radius: 12px; padding: 0 24px; font-weight: 800; font-size: 15px; cursor: pointer; color: var(--ink); }
+
+    .idle-card { text-align: center; padding: 40px 20px; color: var(--muted); font-weight: 600; }
+    .idle-card svg { width: 48px; height: 48px; stroke: #D1D5DB; margin-bottom: 16px; }
+    
+    .waiting-card { text-align: center; padding: 30px 20px; }
+    .waiting-card h3 { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+    .waiting-card p { font-size: 14px; color: var(--muted); font-weight: 600; }
+    
+    .hidden { display: none !important; }
+
+    .dest-marker { width: 18px; height: 18px; background: var(--ink); border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  </style>
+</head>
+<body>
+
+  <!-- AUTH FLOW -->
+  <div id="authContainer">
+    <div id="googleScreen">
+      <div class="auth-logo">KM <span>DRIVER</span></div>
+      <div class="auth-sub">Sign in to start accepting rides.</div>
+      
+      <button class="google-btn" id="googleBtn" type="button">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+        Continue with Google
+      </button>
+    </div>
+
+    <div id="detailsScreen">
+      <button class="back-btn" id="backBtn" type="button">← Back</button>
+      <div class="auth-logo">Vehicle Details</div>
+      <div class="auth-sub">Passengers need to know what car to look for.</div>
+      <div class="input-group">
+        <label class="input-label">Full Name</label>
+        <input type="text" id="dName" class="thick-input" placeholder="e.g. Chanda Mwale">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Phone Number</label>
+        <input type="tel" id="dPhone" class="thick-input" placeholder="+260 97 123 4567">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Car Make & Model</label>
+        <input type="text" id="dCar" class="thick-input" placeholder="e.g. Toyota Corolla (White)">
+      </div>
+      <div class="input-group">
+        <label class="input-label">License Plate</label>
+        <input type="text" id="dPlate" class="thick-input" placeholder="e.g. BAL 4521">
+      </div>
+      <p class="status-msg" id="detailsMsg"></p>
+      <button class="btn-primary" id="registerBtn" type="button">Register & Go Online</button>
+    </div>
+  </div>
+
+  <!-- DRIVER DASHBOARD -->
+  <div class="app-viewport hidden" id="driverApp">
+    <div class="header">
+      <div class="brand-logo">KM <span>DRIVER</span></div>
+      <div class="toggle-wrapper">
+        <span id="onlineStatus" style="color:var(--muted);">Offline</span>
+        <div class="toggle-switch" id="onlineToggle"></div>
+      </div>
+    </div>
+    
+    <div style="position: relative;">
+      <div id="map"></div>
+      <div class="map-controls">
+        <div class="follow-btn" id="followBtn" title="Follow my location">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-panel">
+      
+      <div id="idleState" class="idle-card">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+        <p id="idleMessage">You are offline.<br>Toggle online to receive ride requests.</p>
+      </div>
+
+      <div id="requestState" class="hidden">
+        <h2 class="panel-title">Ride Requests</h2>
+        <div id="requestList"></div>
+      </div>
+
+      <div id="activeTripState" class="hidden">
+        <h2 class="panel-title" id="driverTripTitle">Passenger accepted!</h2>
+        <div class="request-card" style="border-color:var(--lime);">
+          <div class="rc-header">
+            <div>
+              <div class="rc-passenger" id="activePName">Passenger</div>
+              <a href="#" class="rc-phone" id="activePPhoneLink">📞 <span id="activePPhone"></span></a>
+            </div>
+          </div>
+          <div class="rc-route">
+            <strong>From:</strong> <span id="activePickup">...</span><br>
+            <strong>To:</strong> <span id="activeDest">...</span>
+          </div>
+          <div style="font-size: 18px; font-weight:800; margin-top: 16px; text-align:center;">Agreed Fare: K<span id="activeFare">0</span></div>
+          
+          <a id="navigateLink" href="#" target="_blank" rel="noopener" style="display:block; text-align:center; text-decoration:none; margin-top:16px; padding:14px; border:2px solid var(--line); border-radius:14px; font-weight:800; font-size:15px; color:var(--ink);">🧭 Navigate</a>
+          <button class="btn-primary" id="driverActionBtn" type="button" style="margin-top: 16px;">Arrived at Pickup</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- FIREBASE COMPAT SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ==========================================
+    // 1. FIREBASE CONFIGURATION
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAF5laovMX9OlrPzrhh-AkdjA-blEk23wo",
+      authDomain: "km-rides.firebaseapp.com",
+      projectId: "km-rides",
+      storageBucket: "km-rides.firebasestorage.app",
+      messagingSenderId: "587721923746",
+      appId: "1:587721923746:web:6596d300e90b149f1c4bfb",
+      measurementId: "G-E6302P43GZ"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const TS = () => firebase.firestore.FieldValue.serverTimestamp();
+
+    // ==========================================
+    // 2. DATA MODEL (shared with the passenger app)
+    // ------------------------------------------
+    // rides/{rideId}          one document per request. status:
+    //                         searching -> accepted -> driver_arrived -> trip_started
+    //                         -> trip_completed -> finished   (or cancelled / expired)
+    // bids/{rideId}_{driverId} ONE document per driver per ride, so bids never overwrite each other.
+    //                         { rideId, driverId, driverName, driverCar, driverPlate, driverPhone,
+    //                           driverOffer, passengerOffer, status: offered|countered|accepted, active }
+    // drivers/{driverId}      profile + online / busy flags
+    // A ride is only ever assigned inside a transaction that checks it is still 'searching',
+    // so two drivers (or two taps) can never both win the same ride.
+    // ==========================================
+
+    // TESTING: open driver.html?d=2 (or d=3 ...) to run several different drivers on one browser
+    const SLOT = new URLSearchParams(location.search).get('d') || '';
+    const key = n => 'kmd_' + n + (SLOT ? '_' + SLOT : '');
+    const store = {
+      get(n) { try { return localStorage.getItem(key(n)); } catch (e) { return null; } },
+      set(n, v) { try { localStorage.setItem(key(n), v); } catch (e) {} },
+      del(n) { try { localStorage.removeItem(key(n)); } catch (e) {} }
+    };
+
+    const KAOMA = { lat: -14.8, lng: 24.8 };
+    const FRESH_MS = 180000;   // requests older than 3 min are hidden
+    const EXPIRE_MS = 300000;  // requests older than 5 min get marked expired
+
+    let map = null, isOnline = false, me = null;
+    let followCamera = false, driverMarker = null, watchId = null, myPos = null;
+    let lastSent = { t: 0, lat: null, lng: null };
+    let openRides = new Map();   // rides still 'searching'
+    let myBids = new Map();      // rideId -> my active bid
+    let myRide = null;           // the ride I am currently driving
+    let openLoaded = false, mineLoaded = false;
+    let unsubOpen = null, unsubBids = null, unsubMine = null;
+    let heartbeat = null, renderTick = null;
+    let closing = false;
+    const reqPins = new Map();   // rideId -> pickup marker
+    const seenRides = new Set();
+    const cardEls = new Map();   // rideId -> card element
+    const busyRides = new Set();
+    const deactivating = new Set();
+    const expiring = new Set();
+    let tripPins = { pickup: null, dest: null };
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const telHref = p => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+    const PHONE_RE = /^(?:\+?260|0)?([79]\d{8})$/;
+    const normalizePhone = v => { const m = String(v).replace(/[\s\-()]/g, '').match(PHONE_RE); return m ? '+260' + m[1] : null; };
+    function distKm(aLat, aLng, bLat, bLng) {
+      const R = 6371, rad = x => x * Math.PI / 180;
+      const dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(h));
+    }
+    const createdMs = r => (r.createdAt && r.createdAt.toMillis) ? r.createdAt.toMillis() : null;
+
+    function friendlyError(e) {
+      const m = e && e.message;
+      if (m === 'RIDE_TAKEN') return 'This ride was just taken or cancelled.';
+      if (m === 'OFFER_CHANGED') return 'The price just changed. Check the latest offer.';
+      if (m === 'BID_GONE') return 'This bid is no longer active.';
+      if (m === 'DRIVER_BUSY') return 'You already have an active ride.';
+      return 'Could not send. Check your connection and try again.';
+    }
+
+    // ==========================================
+    // AUTH FLOW (Google step is a placeholder while testing)
+    // ==========================================
+    $('googleBtn').onclick = () => { $('googleScreen').classList.add('hidden'); $('detailsScreen').classList.add('active'); };
+    $('backBtn').onclick = () => { $('googleScreen').classList.remove('hidden'); $('detailsScreen').classList.remove('active'); };
+
+    function loadProfile() {
+      try { return JSON.parse(store.get('profile') || 'null'); } catch (e) { return null; }
+    }
+
+    $('registerBtn').onclick = async () => {
+      const fullName = $('dName').value.trim();
+      const phone = normalizePhone($('dPhone').value.trim());
+      const car = $('dCar').value.trim();
+      const plate = $('dPlate').value.trim().toUpperCase();
+      const msg = $('detailsMsg');
+
+      if (!fullName || !$('dPhone').value.trim() || !car || !plate) { msg.textContent = "Please fill in all details."; return; }
+      if (!phone) { msg.textContent = "Enter a valid Zambian number, e.g. +260 97 123 4567"; return; }
+
+      const old = loadProfile();
+      const id = (old && old.id) || ('drv_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
+      const btn = $('registerBtn');
+      btn.disabled = true;
+      msg.textContent = '';
+      try {
+        await db.collection('drivers').doc(id).set({ fullName, phone, car, plate, online: false, updatedAt: TS() }, { merge: true });
+      } catch (e) {
+        msg.textContent = "Could not register: " + e.message;
+        btn.disabled = false;
+        return;
+      }
+      me = { id, fullName, phone, car, plate };
+      store.set('profile', JSON.stringify(me));
+      btn.disabled = false;
+      enterApp();
+      goOnline();
+    };
+
+    function enterApp() {
+      $('authContainer').classList.add('hidden');
+      $('driverApp').classList.remove('hidden');
+      initMap();
+    }
+
+    function initMap() {
+      if (map) { map.invalidateSize(); return; }
+      try {
+        map = L.map('map', { zoomControl: false, attributionControl: false }).setView([KAOMA.lat, KAOMA.lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        setTimeout(() => map && map.invalidateSize(), 300);
+      } catch (e) { console.warn('Map unavailable:', e); map = null; }
+    }
+
+    // ==========================================
+    // MAP MARKERS
+    // ==========================================
+    const driverIcon = () => L.divIcon({ className: '', html: '<div class="driver-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+    const pickupIcon = () => L.divIcon({ className: '', html: '<div class="pickup-marker"></div>', iconSize: [24, 24], iconAnchor: [12, 24] });
+    const destIcon = () => L.divIcon({ className: '', html: '<div class="dest-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+
+    function clearTripPins() {
+      ['pickup', 'dest'].forEach(k => { if (tripPins[k]) { tripPins[k].remove(); tripPins[k] = null; } });
+    }
+    function clearReqPins() { reqPins.forEach(m => m.remove()); reqPins.clear(); }
+
+    // ==========================================
+    // LOCATION TRACKING (also streams my position to the passenger during a ride)
+    // ==========================================
+    function startTracking() {
+      if (watchId != null || !navigator.geolocation) return;
+      watchId = navigator.geolocation.watchPosition(onPos, err => {
+        console.warn('GPS:', err.message);
+        if (err.code === 1 && isOnline) alert("Please enable GPS so passengers can see you.");
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    }
+    function stopTracking() {
+      if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      if (driverMarker) { driverMarker.remove(); driverMarker = null; }
+    }
+    function onPos(pos) {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      const first = !myPos;
+      myPos = { lat, lng };
+      if (map) {
+        if (!driverMarker) driverMarker = L.marker([lat, lng], { icon: driverIcon() }).addTo(map).bindPopup("You are here");
+        else driverMarker.setLatLng([lat, lng]);
+        if (followCamera) map.panTo([lat, lng]);
+        else if (first && !myRide) map.flyTo([lat, lng], 15);
+      }
+      sendLocation(lat, lng);
+      if (first) render();
+    }
+    function sendLocation(lat, lng) {
+      if (!myRide || !['accepted', 'driver_arrived', 'trip_started'].includes(myRide.status)) return;
+      const now = Date.now();
+      if (now - lastSent.t < 5000) return;
+      if (lastSent.lat != null && distKm(lastSent.lat, lastSent.lng, lat, lng) < 0.01) return;
+      lastSent = { t: now, lat, lng };
+      db.collection('rides').doc(myRide.id).update({ driverLat: lat, driverLng: lng }).catch(() => {});
+    }
+
+    $('followBtn').onclick = () => {
+      followCamera = !followCamera;
+      $('followBtn').classList.toggle('active', followCamera);
+      if (followCamera) {
+        startTracking();
+        if (map && myPos) map.flyTo([myPos.lat, myPos.lng], 16);
+      } else if (!isOnline) {
+        stopTracking();
+      }
+    };
+
+    // ==========================================
+    // ONLINE / OFFLINE
+    // ==========================================
+    function setPresence(online) {
+      if (!me) return;
+      db.collection('drivers').doc(me.id).set({ online, lastSeen: TS(), updatedAt: TS() }, { merge: true }).catch(() => {});
+    }
+
+    async function reconcileBusy() {
+      // Clears a stale 'busy' flag left by a crashed session (never touches a genuinely active ride)
+      try {
+        await db.runTransaction(async tx => {
+          const dref = db.collection('drivers').doc(me.id);
+          const ds = await tx.get(dref);
+          if (!ds.exists || !ds.data().busy) return;
+          const rid = ds.data().currentRideId;
+          let active = false;
+          if (rid) {
+            const rs = await tx.get(db.collection('rides').doc(rid));
+            active = rs.exists && rs.data().driverId === me.id && rs.data().driverActive === true;
+          }
+          if (!active) tx.set(dref, { busy: false, currentRideId: null }, { merge: true });
+        });
+      } catch (e) { console.warn(e); }
+    }
+
+    function goOnline() {
+      if (!me) return;
+      isOnline = true;
+      store.set('online', '1');
+      $('onlineToggle').classList.add('on');
+      $('onlineStatus').textContent = "Online";
+      $('onlineStatus').style.color = "var(--ink)";
+      startTracking();
+      setPresence(true);
+      reconcileBusy();
+      clearInterval(heartbeat);
+      heartbeat = setInterval(() => setPresence(true), 30000);
+      clearInterval(renderTick);
+      renderTick = setInterval(render, 15000);
+      startListeners();
+      render();
+    }
+
+    function goOffline() {
+      if (myRide) { alert("Finish your current trip first."); return; }
+      isOnline = false;
+      store.del('online');
+      stopListeners();
+      myBids.forEach(b => deactivateBid(b.id));
+      myBids.clear(); openRides.clear();
+      clearInterval(heartbeat); clearInterval(renderTick);
+      setPresence(false);
+      if (!followCamera) stopTracking();
+      $('onlineToggle').classList.remove('on');
+      $('onlineStatus').textContent = "Offline";
+      $('onlineStatus').style.color = "var(--muted)";
+      clearReqPins();
+      $('requestList').innerHTML = ''; cardEls.clear();
+      $('idleMessage').innerHTML = "You are offline.<br>Toggle online to receive ride requests.";
+      showPanel('idle');
+    }
+
+    $('onlineToggle').onclick = () => { if (isOnline) goOffline(); else goOnline(); };
+
+    // ==========================================
+    // FIRESTORE LISTENERS
+    // ==========================================
+    function stopListeners() {
+      [unsubOpen, unsubBids, unsubMine].forEach(u => { if (u) u(); });
+      unsubOpen = unsubBids = unsubMine = null;
+      openLoaded = mineLoaded = false;
+    }
+
+    function startListeners() {
+      stopListeners();
+
+      // 1. every request still open for bids
+      unsubOpen = db.collection('rides').where('status', '==', 'searching').onSnapshot(snap => {
+        openRides.clear();
+        snap.forEach(d => openRides.set(d.id, { id: d.id, ...d.data() }));
+        openLoaded = true;
+        expireStale();
+        render();
+      }, err => console.error('Open rides listener:', err));
+
+      // 2. my own bids (one document per ride, nobody else writes my bid)
+      unsubBids = db.collection('bids').where('driverId', '==', me.id).where('active', '==', true).onSnapshot(snap => {
+        myBids.clear();
+        snap.forEach(d => myBids.set(d.data().rideId, { id: d.id, ...d.data() }));
+        render();
+      }, err => console.error('Bids listener:', err));
+
+      // 3. the ride I am driving (assigned to me and still active)
+      unsubMine = db.collection('rides').where('driverId', '==', me.id).where('driverActive', '==', true).onSnapshot(snap => {
+        mineLoaded = true;
+        const docs = [];
+        snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+        if (myRide) {
+          const cur = docs.find(d => d.id === myRide.id);
+          if (!cur) { if (!closing) rideEndedByPassenger(); return; }
+          myRide = cur;
+        } else if (docs.length) {
+          myRide = docs[0];
+          closing = false;
+          myBids.forEach(b => { if (b.rideId !== myRide.id) deactivateBid(b.id); });
+          lastSent = { t: 0, lat: null, lng: null };
+          if (navigator.vibrate) { try { navigator.vibrate(200); } catch (e) {} }
+          if (myPos) sendLocation(myPos.lat, myPos.lng);
+        }
+        render();
+      }, err => console.error('My ride listener:', err));
+    }
+
+    function deactivateBid(id) {
+      if (deactivating.has(id)) return;
+      deactivating.add(id);
+      db.collection('bids').doc(id).update({ active: false }).catch(() => {}).finally(() => deactivating.delete(id));
+    }
+
+    function expireStale() {
+      const now = Date.now();
+      openRides.forEach(r => {
+        const t = createdMs(r);
+        if (t && now - t > EXPIRE_MS && !expiring.has(r.id)) {
+          expiring.add(r.id);
+          const ref = db.collection('rides').doc(r.id);
+          db.runTransaction(async tx => {
+            const s = await tx.get(ref);
+            if (s.exists && s.data().status === 'searching') tx.update(ref, { status: 'expired' });
+          }).catch(() => {});
+        }
+      });
+    }
+
+    // ==========================================
+    // RENDERING
+    // ==========================================
+    function showPanel(name) {
+      $('idleState').classList.toggle('hidden', name !== 'idle');
+      $('requestState').classList.toggle('hidden', name !== 'requests');
+      $('activeTripState').classList.toggle('hidden', name !== 'trip');
+    }
+
+    function visibleRequests() {
+      const now = Date.now();
+      return [...openRides.values()].filter(r => {
+        const t = createdMs(r);
+        return myBids.has(r.id) || t == null || now - t < FRESH_MS;
+      }).sort((a, b) => (createdMs(b) || Date.now()) - (createdMs(a) || Date.now()));
+    }
+
+    function render() {
+      if (!isOnline) return;
+      if (myRide) { renderTrip(); return; }
+
+      // withdraw bids on rides that are no longer open (taken by another driver, cancelled, expired)
+      if (openLoaded) {
+        myBids.forEach(b => { if (!openRides.has(b.rideId)) deactivateBid(b.id); });
+      }
+
+      const list = visibleRequests();
+      clearTripPins();
+      if (!list.length) {
+        $('idleMessage').innerHTML = "You are online.<br>Waiting for new requests...";
+        $('requestList').innerHTML = ''; cardEls.clear();
+        clearReqPins();
+        showPanel('idle');
+        return;
+      }
+      showPanel('requests');
+      renderRequestCards(list);
+      syncRequestPins(list);
+    }
+
+    function buildCard(r, bid) {
+      const el = document.createElement('div');
+      el.className = 'request-card';
+      el.dataset.ride = r.id;
+
+      let actions;
+      if (!bid) {
+        actions = `
+          <div class="bid-input-row">
+            <input type="number" inputmode="numeric" class="bid-input" placeholder="Enter fare (K)">
+            <button class="btn-bid" data-act="bid" type="button">Send Bid</button>
+          </div>`;
+      } else if (bid.status === 'countered' && bid.passengerOffer != null) {
+        actions = `
+          <div class="rc-route" style="margin-bottom:10px;">Passenger offers <strong>K${esc(bid.passengerOffer)}</strong> (your bid: K${esc(bid.driverOffer)})</div>
+          <button class="btn-primary" data-act="accept" type="button" style="margin-top:0; margin-bottom:10px;">Accept K${esc(bid.passengerOffer)}</button>
+          <div class="bid-input-row">
+            <input type="number" inputmode="numeric" class="bid-input" placeholder="Counter fare (K)">
+            <button class="btn-bid" data-act="bid" type="button">Counter</button>
+          </div>`;
+      } else {
+        actions = `
+          <div class="rc-route" style="margin-bottom:10px;">Your bid: <strong>K${esc(bid.driverOffer)}</strong> · waiting for the passenger</div>
+          <div class="bid-input-row">
+            <input type="number" inputmode="numeric" class="bid-input" placeholder="Change fare (K)">
+            <button class="btn-bid" data-act="bid" type="button">Update</button>
+          </div>`;
+      }
+
+      el.innerHTML = `
+        <div class="rc-header">
+          <div>
+            <div class="rc-passenger">${esc(r.passengerName || 'Passenger')}</div>
+            <div class="rc-phone" style="cursor:default;">📞 Hidden until accepted</div>
+          </div>
+          <div style="background:var(--lime); padding: 4px 10px; border-radius: 8px; font-weight:800; font-size:12px;">${bid ? 'BID SENT' : 'NEW'}</div>
+        </div>
+        <div class="rc-route">
+          <strong>From:</strong> ${esc(r.pickup || 'Location not set')}<br>
+          <strong>To:</strong> ${esc(r.destination || 'Destination not set')}
+          <span data-dist style="display:block;"></span>
+        </div>
+        ${actions}
+        <p class="status-msg" data-msg style="margin-top:10px;"></p>`;
+      return el;
+    }
+
+    function renderRequestCards(list) {
+      const box = $('requestList');
+      const keep = new Set();
+      list.forEach((r, idx) => {
+        keep.add(r.id);
+        const bid = myBids.get(r.id);
+        const sig = [r.id, r.pickup, r.destination, bid ? bid.status + '|' + bid.driverOffer + '|' + bid.passengerOffer : 'none'].join('~');
+        let el = cardEls.get(r.id);
+        if (!el || el.dataset.sig !== sig) {
+          const fresh = buildCard(r, bid);
+          fresh.dataset.sig = sig;
+          if (el && el.parentNode) box.replaceChild(fresh, el);
+          el = fresh;
+          cardEls.set(r.id, el);
+        }
+        if (box.children[idx] !== el) box.insertBefore(el, box.children[idx] || null);
+
+        // distance is updated in place so typing in the fare box is never interrupted
+        const d = el.querySelector('[data-dist]');
+        const pLat = num(r.pickupLat), pLng = num(r.pickupLng);
+        if (d) d.textContent = (myPos && pLat != null) ? `≈ ${distKm(myPos.lat, myPos.lng, pLat, pLng).toFixed(1)} km from you` : '';
+      });
+      cardEls.forEach((el, id) => { if (!keep.has(id)) { el.remove(); cardEls.delete(id); } });
+    }
+
+    function syncRequestPins(list) {
+      if (!map) return;
+      const ids = new Set();
+      let newest = null;
+      list.forEach(r => {
+        const lat = num(r.pickupLat), lng = num(r.pickupLng);
+        if (lat == null) return;
+        ids.add(r.id);
+        if (!reqPins.has(r.id)) {
+          reqPins.set(r.id, L.marker([lat, lng], { icon: pickupIcon() }).addTo(map).bindPopup("Passenger pickup"));
+          if (!seenRides.has(r.id)) newest = [lat, lng];
+        }
+        seenRides.add(r.id);
+      });
+      reqPins.forEach((m, id) => { if (!ids.has(id)) { m.remove(); reqPins.delete(id); } });
+      if (newest && !followCamera) map.flyTo(newest, 15);
+    }
+
+    // ==========================================
+    // BIDDING (every driver writes only their own bid document)
+    // ==========================================
+    function placeBid(rideId, offer) {
+      const rideRef = db.collection('rides').doc(rideId);
+      const bidRef = db.collection('bids').doc(rideId + '_' + me.id);
+      return db.runTransaction(async tx => {
+        const rs = await tx.get(rideRef);
+        const bs = await tx.get(bidRef);
+        if (!rs.exists || rs.data().status !== 'searching') throw new Error('RIDE_TAKEN');
+        const data = {
+          rideId, driverId: me.id,
+          driverName: me.fullName, driverCar: me.car, driverPlate: me.plate, driverPhone: me.phone,
+          driverOffer: offer, passengerOffer: null, status: 'offered', active: true, updatedAt: TS()
+        };
+        if (!bs.exists) data.createdAt = TS();
+        tx.set(bidRef, data, { merge: true });
+      });
+    }
+
+    // Assigns the ride atomically: only succeeds while the ride is still 'searching' and the price matches
+    function acceptBidTx(rideId, driverId, expectedOffer, who) {
+      const rideRef = db.collection('rides').doc(rideId);
+      const bidRef = db.collection('bids').doc(rideId + '_' + driverId);
+      const drvRef = db.collection('drivers').doc(driverId);
+      return db.runTransaction(async tx => {
+        const rs = await tx.get(rideRef);
+        const bs = await tx.get(bidRef);
+        const ds = await tx.get(drvRef);
+        if (!rs.exists || rs.data().status !== 'searching') throw new Error('RIDE_TAKEN');
+        if (!bs.exists || !bs.data().active) throw new Error('BID_GONE');
+        const b = bs.data();
+        if (who === 'driver') {
+          if (b.status !== 'countered' || b.passengerOffer !== expectedOffer) throw new Error('OFFER_CHANGED');
+        } else if (b.driverOffer !== expectedOffer) {
+          throw new Error('OFFER_CHANGED');
+        }
+        const d = ds.exists ? ds.data() : {};
+        if (d.busy === true && d.currentRideId !== rideId) throw new Error('DRIVER_BUSY');
+        tx.update(rideRef, {
+          status: 'accepted', driverId,
+          driverName: d.fullName || b.driverName, driverCar: d.car || b.driverCar,
+          driverPlate: d.plate || b.driverPlate, driverPhone: d.phone || b.driverPhone,
+          driverOffer: b.driverOffer, agreedPrice: expectedOffer,
+          driverActive: true, acceptedAt: TS()
+        });
+        tx.update(bidRef, { status: 'accepted', active: false });
+        tx.set(drvRef, { busy: true, currentRideId: rideId, updatedAt: TS() }, { merge: true });
+      });
+    }
+
+    $('requestList').addEventListener('click', async e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const card = btn.closest('[data-ride]');
+      const rideId = card.dataset.ride;
+      const msg = card.querySelector('[data-msg]');
+      if (busyRides.has(rideId)) return;
+      busyRides.add(rideId);
+      btn.disabled = true;
+      msg.style.color = 'var(--muted)';
+      msg.textContent = '';
+      try {
+        if (btn.dataset.act === 'bid') {
+          const offer = parseInt(card.querySelector('.bid-input').value, 10);
+          if (!offer || offer < 10 || offer > 100000) {
+            msg.style.color = 'var(--danger)';
+            msg.textContent = "Enter a fare of at least K10";
+            return;
+          }
+          await placeBid(rideId, offer);
+        } else if (btn.dataset.act === 'accept') {
+          const bid = myBids.get(rideId);
+          if (!bid) throw new Error('BID_GONE');
+          await acceptBidTx(rideId, me.id, bid.passengerOffer, 'driver');
+        }
+      } catch (err) {
+        msg.style.color = 'var(--danger)';
+        msg.textContent = friendlyError(err);
+      } finally {
+        busyRides.delete(rideId);
+        btn.disabled = false;
+      }
+    });
+
+    // ==========================================
+    // ACTIVE TRIP (the screen is driven by the ride's status, so it survives refreshes)
+    // ==========================================
+    const TRIP_UI = {
+      accepted: ["Passenger accepted! Drive to pickup.", "Arrived at Pickup"],
+      driver_arrived: ["Waiting for passenger to board...", "Start Trip"],
+      trip_started: ["Trip in progress", "Complete Trip"],
+      trip_completed: ["Trip Completed", "Done"]
+    };
+
+    function renderTrip() {
+      const r = myRide;
+      if (!r) return;
+      const ui = TRIP_UI[r.status] || TRIP_UI.accepted;
+      showPanel('trip');
+      $('driverTripTitle').textContent = ui[0];
+      $('driverActionBtn').textContent = ui[1];
+      $('activePName').textContent = r.passengerName || 'Passenger';
+      $('activePPhone').textContent = r.passengerPhone || 'Phone hidden';
+      $('activePPhoneLink').href = telHref(r.passengerPhone);
+      $('activePickup').textContent = r.pickup || 'Location not set';
+      $('activeDest').textContent = r.destination || 'Destination not set';
+      $('activeFare').textContent = r.agreedPrice != null ? r.agreedPrice : (r.driverOffer || 0);
+
+      const toDest = r.status === 'trip_started' || r.status === 'trip_completed';
+      const lat = num(toDest ? r.destLat : r.pickupLat), lng = num(toDest ? r.destLng : r.pickupLng);
+      const target = (lat != null && lng != null) ? `${lat},${lng}` : encodeURIComponent(((toDest ? r.destination : r.pickup) || '') + ', Kaoma, Zambia');
+      $('navigateLink').href = 'https://www.google.com/maps/dir/?api=1&destination=' + target;
+
+      if (map) {
+        clearReqPins();
+        const pLat = num(r.pickupLat), pLng = num(r.pickupLng), dLat = num(r.destLat), dLng = num(r.destLng);
+        if (pLat != null && !tripPins.pickup) tripPins.pickup = L.marker([pLat, pLng], { icon: pickupIcon() }).addTo(map).bindPopup("Passenger pickup");
+        if (dLat != null && !tripPins.dest) tripPins.dest = L.marker([dLat, dLng], { icon: destIcon() }).addTo(map).bindPopup("Destination");
+      }
+    }
+
+    function rideStepTx(id, from, to) {
+      const ref = db.collection('rides').doc(id);
+      return db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().driverId !== me.id || s.data().status !== from) throw new Error('RIDE_CHANGED');
+        tx.update(ref, { status: to });
+      });
+    }
+
+    function finishRideTx(id) {
+      const ref = db.collection('rides').doc(id);
+      const dref = db.collection('drivers').doc(me.id);
+      return db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().driverId !== me.id || s.data().status !== 'trip_completed') throw new Error('RIDE_CHANGED');
+        tx.update(ref, { status: 'finished', driverActive: false });
+        tx.set(dref, { busy: false, currentRideId: null, updatedAt: TS() }, { merge: true });
+      });
+    }
+
+    $('driverActionBtn').onclick = async () => {
+      if (!myRide) return;
+      const id = myRide.id, st = myRide.status;
+      const btn = $('driverActionBtn');
+      btn.disabled = true;
+      try {
+        if (st === 'accepted') await rideStepTx(id, 'accepted', 'driver_arrived');
+        else if (st === 'driver_arrived') await rideStepTx(id, 'driver_arrived', 'trip_started');
+        else if (st === 'trip_started') await rideStepTx(id, 'trip_started', 'trip_completed');
+        else if (st === 'trip_completed') {
+          closing = true;
+          await finishRideTx(id);
+          resetDriverState();
+        }
+      } catch (error) {
+        closing = false;
+        if (error.message !== 'RIDE_CHANGED') alert("Error updating status: " + error.message);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    function rideEndedByPassenger() {
+      alert("The passenger cancelled the ride.");
+      db.collection('drivers').doc(me.id).set({ busy: false, currentRideId: null, updatedAt: TS() }, { merge: true }).catch(() => {});
+      resetDriverState();
+    }
+
+    function resetDriverState() {
+      myRide = null;
+      closing = false;
+      clearTripPins();
+      lastSent = { t: 0, lat: null, lng: null };
+      render();
+    }
+
+    // ==========================================
+    // START-UP: restore a saved driver after a refresh
+    // ==========================================
+    (async function resume() {
+      const p = loadProfile();
+      if (!p || !p.id) return;
+      me = p;
+      $('dName').value = p.fullName || ''; $('dPhone').value = p.phone || '';
+      $('dCar').value = p.car || ''; $('dPlate').value = p.plate || '';
+      enterApp();
+      let hasRide = false;
+      try {
+        const q = await db.collection('rides').where('driverId', '==', me.id).where('driverActive', '==', true).limit(1).get();
+        hasRide = !q.empty;
+      } catch (e) { console.warn(e); }
+      if (store.get('online') === '1' || hasRide) goOnline();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="google-site-verification" content="tEs8eloWJo6LImR2Q1YFKX9iPh5Opv7h9SEV80Utaok" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="description" content="Request a ride in Kaoma. Compare driver offers and negotiate your fare with KM Rides.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="KM Rides">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <title>KM Rides | Kaoma</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;600;700;800&display=swap');
+
+    :root {
+      --ink: #101828;
+      --muted: #667085;
+      --lime: #c8f169;
+      --lime-dark: #88a746;
+      --line: #e7eaf0;
+      --paper: #f7f8fa;
+      --danger: #EF4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    /* --- FIX: ALLOW SCROLLING BY DEFAULT --- */
+    html, body { height: 100%; width: 100%; background-color: #fff; overflow-x: hidden; overflow-y: auto; }
+
+    /* --- 1. LANDING PAGE --- */
+    #landingPage {
+      background: #fff; z-index: 6000;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+
+    .topbar { 
+      padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; 
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; z-index: 10; 
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--ink); letter-spacing: -0.5px; }
+    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--lime); color: var(--ink); font-weight: 800; }
+    .outline-btn { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; font-weight: 700; color: var(--ink); cursor: pointer; }
+
+    .hero-content { 
+      padding: 40px 24px 40px 24px; 
+      background: radial-gradient(circle at 12% 20%, #f0f8df 0, transparent 35%), linear-gradient(120deg, #fafbf8, #f5f7f2); 
+      flex: 1; 
+    }
+    
+    .eyebrow { font-size: 11px; letter-spacing: .16em; font-weight: 800; color: var(--lime-dark); text-transform: uppercase; }
+    .hero-content h1 { font: 800 clamp(40px, 8vw, 56px)/1.05 Manrope, sans-serif; letter-spacing: -.04em; margin: 16px 0; color: var(--ink); }
+    .hero-content h1 span { color: var(--lime-dark); }
+    .hero-content > p { font-size: 16px; line-height: 1.6; color: var(--muted); margin-bottom: 24px; }
+    
+    .trust-row { display: flex; gap: 16px; font-size: 13px; font-weight: 700; color: #53632d; margin-bottom: 40px; }
+
+    .steps-section { margin-bottom: 40px; }
+    .steps-section h2 { font: 800 28px Manrope, sans-serif; letter-spacing: -0.5px; margin: 8px 0 24px; color: var(--ink); }
+    .step-card { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+    .step-number { font-size: 12px; font-weight: 800; color: var(--lime-dark); margin-bottom: 16px; display: block; }
+    .step-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 8px; font-family: 'Manrope', sans-serif; }
+    .step-desc { font-size: 14px; color: var(--muted); line-height: 1.6; font-weight: 500; }
+
+    .action-section { padding-bottom: 40px; }
+    .btn-primary { 
+      width: 100%; background: var(--ink); color: #fff; border: none; border-radius: 14px; 
+      padding: 18px; font-size: 16px; font-weight: 800; cursor: pointer; 
+      display: flex; justify-content: center; align-items: center; gap: 8px; 
+      box-shadow: 0 8px 25px rgba(16, 24, 40, 0.2);
+    }
+
+    /* --- 2. AUTH SCREENS --- */
+    #authContainer { position: fixed; inset: 0; background: #fff; z-index: 5000; display: none; flex-direction: column; overflow-y: auto; }
+    #googleScreen { padding: 40px 24px; display: flex; flex-direction: column; height: 100%; }
+    #googleScreen.hidden { display: none; }
+    #phoneScreen { position: absolute; inset: 0; padding: 40px 24px; display: none; flex-direction: column; background: #fff; }
+    #phoneScreen.active { display: flex; }
+
+    .auth-logo { font-size: 32px; font-weight: 800; color: var(--ink); margin-bottom: 8px; letter-spacing: -1px; }
+    .auth-logo span { color: var(--lime-dark); }
+    .auth-sub { color: var(--muted); font-size: 15px; font-weight: 600; margin-bottom: 40px; }
+    
+    .google-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; color: var(--ink); cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
+    .google-btn img { width: 22px; height: 22px; }
+    .back-btn { background: none; border: none; font-size: 15px; font-weight: 700; color: var(--muted); cursor: pointer; padding: 0; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; width: fit-content; }
+
+    .input-group { margin-bottom: 20px; position: relative; }
+    .input-label { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+    .thick-input { width: 100%; background: #F3F4F6; border: 2px solid transparent; border-radius: 12px; padding: 18px; font-size: 16px; font-weight: 700; color: var(--ink); outline: none; transition: all 0.2s; }
+    .thick-input:focus { background: #fff; border-color: var(--ink); }
+    .checkbox-group { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; cursor: pointer; }
+    .checkbox-group input { margin-top: 4px; accent-color: var(--ink); width: 18px; height: 18px; }
+    .checkbox-group p { font-size: 13px; font-weight: 600; color: var(--muted); line-height: 1.5; }
+
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost { width: 100%; background: transparent; border: 2px solid var(--line); border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 800; color: var(--ink); margin-top: 10px; cursor: pointer; }
+
+    /* --- 3. MAIN APP (MAP) --- */
+    .app-viewport { display: none; position: fixed; inset: 0 0 70px 0; flex-direction: column; background: #fff; overflow: hidden; }
+    .tab-content { position: absolute; inset: 0; display: none; flex-direction: column; background: #fff; }
+    .tab-content.active { display: flex; }
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #E5E7EB; }
+    
+    .top-header { position: absolute; top: 0; left: 0; right: 0; padding: 20px; z-index: 10; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+    .brand-logo { background: var(--ink); color: #fff; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: auto; }
+    .brand-logo span { color: var(--lime); }
+
+    .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 24px 24px 0 0; z-index: 20; padding: 20px 24px; box-shadow: 0 -8px 30px rgba(0,0,0,0.08); max-height: 90%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    .sheet-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .back-arrow { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+    .back-arrow svg { width: 24px; height: 24px; stroke: var(--ink); stroke-width: 2.5; }
+    .sheet-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: var(--ink); }
+    
+    .location-inputs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; position: relative; }
+    .location-inputs::before { content: ''; position: absolute; left: 20px; top: 30px; bottom: 30px; width: 2px; background: var(--line); z-index: 1; }
+    .loc-input-row { display: flex; align-items: center; gap: 12px; position: relative; z-index: 2; }
+    .loc-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 3px solid #fff; box-shadow: 0 0 0 2px var(--ink); flex-shrink: 0; margin: 0 4px; }
+    .loc-dot.dest { background: var(--lime-dark); box-shadow: 0 0 0 2px var(--lime-dark); }
+    .loc-input { flex: 1; background: #F3F4F6; border: 2px solid transparent; border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700; color: var(--ink); outline: none; }
+    .loc-input:focus { background: #fff; border-color: var(--ink); }
+
+    .autocomplete-list { position: absolute; top: 100%; left: 40px; right: 0; background: #fff; border: 2px solid var(--ink); border-radius: 12px; margin-top: 6px; z-index: 1000; max-height: 180px; overflow-y: auto; display: none; }
+    .autocomplete-list.show { display: block; }
+    .ac-item { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .ac-item:hover { background: #F3F4F6; }
+
+    .radar-container { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+    .radar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--lime-dark); position: relative; display: flex; justify-content: center; align-items: center; margin-bottom: 24px; }
+    .radar::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid var(--lime-dark); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+    @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+
+    .driver-list { display: flex; flex-direction: column; gap: 10px; }
+    .driver-card { border: 2px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; transition: all 0.2s; }
+    .dc-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .dc-avatar { width: 48px; height: 48px; border-radius: 50%; background: #E5E7EB; color: var(--ink); display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: 800; }
+    .dc-info h4 { font-size: 16px; font-weight: 800; margin: 0 0 2px 0; color: var(--ink); }
+    .dc-info p { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+    .dc-details { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+    .driver-price { font-size: 20px; font-weight: 800; color: var(--ink); }
+
+    .price-box { background: #F3F4F6; border-radius: 16px; padding: 24px; text-align: center; margin: 16px 0; }
+    .price-box p { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .price-box h2 { font-size: 44px; font-weight: 800; color: var(--ink); letter-spacing: -1.5px; }
+    .offer-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .offer-input { flex: 1; background: #F3F4F6; border: 2px solid transparent; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 800; outline: none; }
+    .offer-input:focus { border-color: var(--ink); background: #fff; }
+    .btn-offer { background: var(--lime); border: none; border-radius: 12px; padding: 0 20px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--ink); }
+
+    .fallback-card { border: 2px dashed var(--muted); border-radius: 16px; padding: 16px; background: #FAFAFA; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .call-btn-sm { background: var(--ink); color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 10px; font-weight: 800; font-size: 13px; }
+
+    .trip-stage { display: flex; align-items: center; gap: 14px; padding: 16px; background: #F3F4F6; border-radius: 16px; margin-bottom: 16px; }
+    .stage-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--lime); display: flex; justify-content: center; align-items: center; font-size: 20px; }
+    .stage-text h4 { font-size: 16px; font-weight: 800; margin: 0; color: var(--ink); }
+    .stage-text p { font-size: 13px; font-weight: 600; color: var(--muted); margin: 2px 0 0 0; }
+    .call-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: var(--ink); color: #fff; text-decoration: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 800; margin-top: 16px; }
+
+    .timeline { display: flex; flex-direction: column; margin: 20px 0; position: relative; }
+    .timeline::before { content: ''; position: absolute; left: 11px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
+    .tl-item { display: flex; gap: 16px; padding-bottom: 24px; position: relative; z-index: 2; }
+    .tl-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+    .tl-icon.start { background: var(--ink); border: 3px solid var(--lime-dark); }
+    .tl-icon.end { background: #fff; border: 3px solid var(--ink); }
+    .tl-content h5 { font-size: 14px; font-weight: 800; margin: 0 0 4px 0; }
+    .tl-content p { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+
+    .page-container { padding: 24px; height: 100%; overflow-y: auto; background: #FAFAFA; }
+    .page-title { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; color: var(--ink); }
+    .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .profile-avatar { width: 64px; height: 64px; background: var(--lime); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: 800; color: var(--ink); }
+    .profile-info h2 { font-size: 20px; font-weight: 800; margin: 0 0 2px 0; }
+    .profile-info p { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+    .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 700; cursor: pointer; }
+    .signout-btn { color: var(--danger); margin-top: 24px; text-align: center; font-weight: 800; font-size: 14px; cursor: pointer; padding: 12px; }
+
+    .bottom-nav { height: 70px; background: #fff; border-top: 1px solid var(--line); display: none; justify-content: space-around; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); position: absolute; bottom: 0; left: 0; right: 0; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9CA3AF; cursor: pointer; transition: 0.2s; }
+    .nav-item.active { color: var(--ink); }
+    .nav-icon svg { width: 22px; height: 22px; fill: currentColor; }
+    .nav-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .hidden { display: none !important; }
+    .status-msg { text-align: center; font-size: 12px; font-weight: 700; color: var(--danger); margin-top: 8px; height: 16px; }
+    .driver-marker { width: 20px; height: 20px; background: #2f7bff; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.4); position: relative; }
+    .driver-marker::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; background: #2f7bff; animation: pulse 2s infinite; z-index: -1; opacity: 0.5; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(2.5); opacity: 0; } }
+
+    /* --- Place search markers & suggestion details --- */
+    .pin-marker { width: 18px; height: 18px; border-radius: 50%; background: var(--ink); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+    .pin-marker.dest { background: var(--lime-dark); }
+    .ac-detail { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+    .ac-note { color: var(--muted); cursor: default; }
+    .ac-note:hover { background: transparent; }
+
+    /* --- Compact card per stage, so the map stays visible --- */
+    .sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; cursor: pointer; position: relative; }
+    .sheet-grip::after { content: ''; position: absolute; inset: -14px -40px; }
+    .bottom-sheet[data-stage="searchState"] { padding-top: 14px; padding-bottom: 16px; }
+    .bottom-sheet[data-stage="searchState"] .radar-container { padding: 4px 0 0; }
+    .bottom-sheet[data-stage="searchState"] .radar { width: 44px; height: 44px; margin-bottom: 12px; }
+    .bottom-sheet[data-stage="searchState"] .radar svg { width: 18px; height: 18px; }
+    .bottom-sheet[data-stage="searchState"] .radar-container h2 { font-size: 17px !important; }
+    .bottom-sheet[data-stage="searchState"] .radar-container p { margin-top: 4px !important; font-size: 13px; }
+    .bottom-sheet[data-stage="searchState"] .radar-container .btn-ghost { margin-top: 12px !important; padding: 12px 20px; }
+    .bottom-sheet[data-stage="listState"] { max-height: 72%; }
+    .bottom-sheet[data-stage="listState"] #bidList { max-height: 26vh; overflow-y: auto; overscroll-behavior: contain; }
+    .bottom-sheet[data-stage="tripState"] { padding: 12px 20px 16px; }
+    .bottom-sheet[data-stage="tripState"] #tripTitle { display: none; }
+    .bottom-sheet[data-stage="tripState"] #tripState { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+    .bottom-sheet[data-stage="tripState"] .trip-stage,
+    .bottom-sheet[data-stage="tripState"] #tripDriverCard,
+    .bottom-sheet[data-stage="tripState"] .timeline { grid-column: 1 / -1; }
+    .bottom-sheet[data-stage="tripState"] .trip-stage { padding: 10px 12px; margin-bottom: 10px; gap: 12px; }
+    .bottom-sheet[data-stage="tripState"] .stage-icon { width: 32px; height: 32px; font-size: 16px; }
+    .bottom-sheet[data-stage="tripState"] .stage-text h4 { font-size: 15px; }
+    .bottom-sheet[data-stage="tripState"] #tripDriverCard { margin-bottom: 10px !important; padding: 10px 12px; }
+    .bottom-sheet[data-stage="tripState"] #tripDriverCard .dc-avatar { width: 38px; height: 38px; }
+    .bottom-sheet[data-stage="tripState"] .call-btn { margin-top: 0; padding: 12px; font-size: 15px; }
+    .bottom-sheet[data-stage="tripState"] #cancelTripBtn { margin-top: 0; padding: 12px; }
+    .bottom-sheet[data-stage="tripState"]:not([data-expanded="true"]) .timeline { display: none; }
+    .bottom-sheet[data-stage="tripState"][data-expanded="true"] .timeline { margin: 14px 0 4px; }
+    .bottom-sheet[data-stage="tripState"][data-expanded="true"] .call-btn,
+    .bottom-sheet[data-stage="tripState"][data-expanded="true"] #cancelTripBtn { grid-column: 1 / -1; }
+    .bottom-sheet[data-stage="tripState"][data-expanded="true"] #cancelTripBtn { margin-top: 4px; }
+
+    /* --- PWA: update notice and offline bar --- */
+    #updateToast { position: fixed; left: 12px; right: 12px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 9000; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ink); color: #fff; padding: 12px 14px; border-radius: 14px; box-shadow: 0 8px 24px rgba(16,24,40,0.25); font-size: 14px; font-weight: 600; }
+    #updateToast button { background: var(--lime); color: var(--ink); border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 800; cursor: pointer; }
+    #offlineBar { position: fixed; top: 0; left: 0; right: 0; z-index: 9500; background: var(--ink); color: #fff; text-align: center; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; font-size: 13px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- 1. LANDING PAGE -->
+  <!-- ========================================== -->
+  <div id="landingPage">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">KM</span> KM RIDES</div>
+      <button class="outline-btn" onclick="startAuthFlow()">Sign in</button>
+    </div>
+    
+    <div class="hero-content">
+      <span class="eyebrow">YOUR RIDE. YOUR TOWN.</span>
+      <h1>Kaoma is<br><span>one ride away.</span></h1>
+      <p>Request a ride around Kaoma with KM Rides. Set your pickup, choose where you're going, and we'll help connect you with a driver.</p>
+      
+      <div class="trust-row">
+        <span>● Local-first service</span>
+        <span>● Simple booking</span>
+      </div>
+
+      <div class="steps-section">
+        <span class="eyebrow">SIMPLE BY DESIGN</span>
+        <h2>Your ride in three steps</h2>
+        
+        <div class="step-card">
+          <span class="step-number">01</span>
+          <div class="step-title">Set your locations</div>
+          <div class="step-desc">Search pickup and destination with suggestions from the map.</div>
+        </div>
+        
+        <div class="step-card">
+          <span class="step-number">02</span>
+          <div class="step-title">Pick a driver</div>
+          <div class="step-desc">See nearby drivers and their phone numbers. Select one to negotiate a fare.</div>
+        </div>
+        
+        <div class="step-card">
+          <span class="step-number">03</span>
+          <div class="step-title">Agree and go</div>
+          <div class="step-desc">Accept the driver's price or offer your own. Then track your ride.</div>
+        </div>
+      </div>
+
+      <div class="action-section">
+        <button class="btn-primary" onclick="startAuthFlow()">Find a Ride</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. AUTH SCREENS -->
+  <!-- ========================================== -->
+  <div id="authContainer">
+    <div id="googleScreen">
+      <div class="auth-logo">KM <span>RIDES</span></div>
+      <div class="auth-sub">Enter your details to start riding.</div>
+      <button class="google-btn" id="googleBtn" type="button">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+        Continue with Google
+      </button>
+    </div>
+
+    <div id="phoneScreen">
+      <button class="back-btn" id="backBtn" type="button">← Back</button>
+      <div class="auth-logo">Almost there.</div>
+      <div class="auth-sub">We need your phone number so your driver can contact you.</div>
+      <div class="input-group">
+        <label class="input-label">Phone Number</label>
+        <input type="tel" id="signupPhone" class="thick-input" placeholder="+260 97 123 4567">
+      </div>
+      <label class="checkbox-group">
+        <input type="checkbox" id="termsCheck">
+        <p>I agree to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong> of KM Rides.</p>
+      </label>
+      <p class="status-msg" id="signupMsg"></p>
+      <button class="btn-primary" id="signupBtn" disabled type="button">Continue</button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. MAIN APP -->
+  <!-- ========================================== -->
+  <div class="app-viewport" id="mainApp">
+    <div class="tab-content active" id="tab-passenger">
+      <div id="map"></div>
+      <div class="top-header"><div class="brand-logo">KM <span>RIDES</span></div></div>
+
+      <div class="bottom-sheet">
+        <div class="sheet-grip hidden" id="sheetGrip" role="button" aria-label="Show trip details"></div>
+        
+        <!-- FORM STATE -->
+        <div id="formState">
+          <h1 class="sheet-title">Where to?</h1>
+          <div class="location-inputs">
+            <div class="loc-input-row">
+              <div class="loc-dot"></div>
+              <input type="text" id="pickup" class="loc-input" placeholder="Pickup location" autocomplete="off">
+              <div class="autocomplete-list" id="pickupAC"></div>
+            </div>
+            <div class="loc-input-row">
+              <div class="loc-dot dest"></div>
+              <input type="text" id="dest" class="loc-input" placeholder="Where to?" autocomplete="off">
+              <div class="autocomplete-list" id="destAC"></div>
+            </div>
+          </div>
+          <button class="btn-primary" id="requestBtn" type="button">Find Driver</button>
+          <button class="btn-ghost" id="locateBtn" type="button">Use My Current Location</button>
+          <p class="status-msg" id="formMsg"></p>
+        </div>
+
+        <!-- SEARCHING STATE -->
+        <div id="searchState" class="hidden">
+          <div class="radar-container">
+            <div class="radar">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+            </div>
+            <h2 style="font-size: 20px; font-weight: 800;">Finding drivers…</h2>
+            <p style="color:var(--muted); margin-top:8px;">Waiting for a driver to bid...</p>
+            <button class="btn-ghost" onclick="cancelRide()" style="margin-top: 20px; width: auto;">Cancel Request</button>
+          </div>
+        </div>
+
+        <!-- BID / NEGOTIATION STATE -->
+        <div id="listState" class="hidden">
+          <div class="sheet-header">
+            <button class="back-arrow" onclick="cancelRide()">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h1 class="sheet-title">Driver Offers</h1>
+          </div>
+          
+          <div id="bidList" class="driver-list" style="margin-bottom: 16px;"></div>
+
+          <div class="offer-row">
+            <input type="number" id="counterOfferInput" class="offer-input" placeholder="Offer your own (K)">
+            <button class="btn-offer" id="sendCounterOfferBtn">Send</button>
+          </div>
+          <p class="status-msg" id="negotiationMsg"></p>
+
+          <button class="btn-primary" id="acceptBidBtn">Accept Driver's Offer</button>
+        </div>
+
+        <!-- FALLBACK STATE -->
+        <div id="fallbackState" class="hidden">
+          <h1 class="sheet-title">No Drivers Online</h1>
+          <p style="color:var(--muted); font-size:14px; font-weight:600; margin-bottom:16px;">But these registered KM Rides drivers are available to call directly:</p>
+          <div id="fallbackList"></div>
+          <button class="btn-ghost" onclick="cancelRide()" style="margin-top: 20px;">Cancel Request</button>
+        </div>
+
+        <!-- TRIP STATE -->
+        <div id="tripState" class="hidden">
+          <h1 class="sheet-title" id="tripTitle">Driver is on the way</h1>
+          <div class="trip-stage">
+            <div class="stage-icon">🚕</div>
+            <div class="stage-text">
+              <h4 id="stageTitle">Driver is on the way</h4>
+              <p id="stageSub">Please wait at your pickup location</p>
+            </div>
+          </div>
+          <div class="driver-card" id="tripDriverCard" style="margin-bottom: 16px; cursor: default;"></div>
+          <a href="#" id="callDriverBtn" class="call-btn">📞 Call Driver</a>
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-icon start"></div>
+              <div class="tl-content"><h5>Pickup</h5><p id="tlPickup">...</p></div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-icon end"></div>
+              <div class="tl-content"><h5>Destination</h5><p id="tlDest">...</p></div>
+            </div>
+          </div>
+          <button class="btn-ghost" id="cancelTripBtn" type="button">Cancel Ride</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="tab-content" id="tab-profile">
+      <div class="page-container">
+        <h1 class="page-title">Profile</h1>
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar">U</div>
+          <div class="profile-info">
+            <h2 id="profileName">User</h2>
+            <p id="profilePhone">user@email.com</p>
+          </div>
+        </div>
+        <div style="background: #fff; border-radius: 16px; padding: 0 20px; border: 1px solid var(--line); margin-bottom: 24px;">
+          <div class="menu-item"><span>Payment Methods</span><span style="color:var(--muted); font-size:13px;">Cash</span></div>
+          <div class="menu-item"><span>Safety & Security</span><span style="color:var(--muted);">→</span></div>
+          <div class="menu-item"><span>Support</span><span style="color:var(--muted);">→</span></div>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 12px;">Recent Rides</h3>
+        <div id="rideHistory" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="color: var(--muted); font-weight: 600; font-size: 13px;">No rides taken yet.</div>
+        </div>
+        <div class="signout-btn" id="signoutBtn">Sign Out</div>
+        <div id="appVersion" style="text-align:center; margin-top:14px; color: var(--muted); font-size: 12px; font-weight: 600;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav" id="bottomNav">
+    <div class="nav-item active" data-tab="tab-passenger">
+      <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></div>
+      <div class="nav-label">Ride</div>
+    </div>
+    <div class="nav-item" data-tab="tab-profile">
+      <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+      <div class="nav-label">Profile</div>
+    </div>
+  </div>
+
+  <div id="offlineBar" class="hidden">You're offline. Reconnect to request a ride.</div>
+  <div id="updateToast" class="hidden"><span>A new version of KM Rides is ready.</span><button id="updateBtn" type="button">Update</button></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <script>
+    // ==========================================
+    // 1. FIREBASE CONFIGURATION
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAF5laovMX9OlrPzrhh-AkdjA-blEk23wo",
+      authDomain: "km-rides.firebaseapp.com",
+      projectId: "km-rides",
+      storageBucket: "km-rides.firebasestorage.app",
+      messagingSenderId: "587721923746",
+      appId: "1:587721923746:web:6596d300e90b149f1c4bfb",
+      measurementId: "G-E6302P43GZ"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ==========================================
+    // 2. APP LOGIC
+    // ==========================================
+    const KAOMA = { lat: -14.8, lng: 24.8 };
+    const MAP_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_58cw_1_894abdfe2144d8886b1409eb';
+    // left,top,right,bottom (lon,lat) - live search is LIMITED to this Kaoma area, so a Lusaka place with the same name never appears
+    const SEARCH_BOX = '24.0,-14.0,25.6,-15.6';
+
+    // Open Location Code (Plus Code) decoder with short-code recovery
+    const OLC = (() => {
+      const ALPHABET = '23456789CFGHJMPQRVWX';
+      const PAIRS = 5, BASE = 20, SCALE = 8000;
+
+      function prefixFromRef(lat, lng, len) {
+        const latInt = Math.floor((Math.min(Math.max(lat, -90), 89.999999) + 90) * SCALE);
+        const lngInt = Math.floor((((lng + 180) % 360 + 360) % 360) * SCALE);
+        let out = '';
+        for (let i = 0; i < PAIRS; i++) {
+          const p = Math.pow(BASE, PAIRS - 1 - i);
+          out += ALPHABET[Math.floor(latInt / p) % BASE] + ALPHABET[Math.floor(lngInt / p) % BASE];
+        }
+        return out.slice(0, len);
+      }
+
+      function decodeFull(code) {
+        const c = code.replace('+', '');
+        let latInt = 0, lngInt = 0;
+        const pairDigits = Math.min(c.length, 10);
+        for (let i = 0; i < pairDigits; i += 2) {
+          const p = Math.pow(BASE, PAIRS - 1 - i / 2);
+          latInt += ALPHABET.indexOf(c[i]) * p;
+          lngInt += ALPHABET.indexOf(c[i + 1]) * p;
+        }
+        let lat = latInt / SCALE - 90, lng = lngInt / SCALE - 180;
+        let latSize = 1 / SCALE, lngSize = 1 / SCALE;
+        if (c.length > 10) { // grid refinement digit (5 rows x 4 columns)
+          const d = ALPHABET.indexOf(c[10]);
+          latSize /= 5; lngSize /= 4;
+          lat += Math.floor(d / 4) * latSize;
+          lng += (d % 4) * lngSize;
+        }
+        return { lat: lat + latSize / 2, lng: lng + lngSize / 2 };
+      }
+
+      // Short code (e.g. "5QWX+C6Q") + a nearby reference point -> coordinates
+      function decodeNear(code, refLat, refLng) {
+        code = String(code).trim().toUpperCase().replace(/\s+/g, '');
+        const plus = code.indexOf('+');
+        if (plus < 0 || (code.match(/\+/g) || []).length !== 1) return null;
+        if (![...code.replace('+', '')].every(ch => ALPHABET.includes(ch))) return null;
+        const padding = 8 - plus;
+        let area;
+        if (padding > 0) {
+          if (padding > 6 || padding % 2) return null;
+          area = decodeFull(prefixFromRef(refLat, refLng, padding) + code);
+          const res = Math.pow(20, 2 - padding / 2), half = res / 2;
+          if (refLat + half < area.lat && area.lat - res >= -90) area.lat -= res;
+          else if (refLat - half > area.lat && area.lat + res <= 90) area.lat += res;
+          if (refLng + half < area.lng) area.lng -= res;
+          else if (refLng - half > area.lng) area.lng += res;
+        } else {
+          area = decodeFull(code);
+        }
+        return area;
+      }
+      return { decodeNear };
+    })();
+
+    // ==========================================
+    // SAVED KAOMA PLACES AND AREAS
+    // Each entry:  name, optional aliases, note (small second line), kind ('place' or 'area'),
+    // and optionally a Plus Code (plus) or plain coordinates (lat, lng).
+    // Entries WITHOUT a code or coordinates still appear as suggestions: the driver gets the name, but no map pin.
+    // To add a place, add one line below. To pin a name-only place later, just add its plus: '....+...'
+    // ==========================================
+    const LANDMARK_LIST = [
+      // ---- exact pins (Plus Codes) ----
+      { name: 'Kaoma Main Station', plus: '6Q3W+FHP', note: 'Opposite Town Council', aliases: ['Main Station'] },
+      { name: 'Kaoma Bus Station', plus: '6Q3X+R99', note: 'Bus station', aliases: ['Bus Station', 'Bus Terminal'] },
+      { name: 'Maseka Filling Station', plus: '5RQ2+GV8', note: 'Fuel · D301', aliases: ['Maseka', 'Maseka Fuel Station'] },
+      { name: 'ENGEN Filling Station', plus: '6Q3W+H53', note: 'Fuel · D301', aliases: ['Engen', 'Engen Kaoma'] },
+      { name: 'Kalukungu Market', plus: '5QWX+C6Q', note: 'Market · D301', aliases: ['Kalukungu'] },
+      { name: 'Old Market', plus: '6Q3V+4JM', note: 'Market', aliases: ['Kaoma Old Market'] },
+      { name: 'Kaoma New Market', plus: '6Q3R+VVW', note: 'Market', aliases: ['New Market'] },
+      { name: 'Zambeef Kaoma Outlet', plus: '5QVX+8X8', note: 'Shop · D301', aliases: ['Zambeef'] },
+      { name: "Mr. Kahyata's Shop", plus: '5GQ65QRX+WW', note: 'Shopping centre', aliases: ['Kahyata', 'Kahyata Shop'] },
+      { name: 'Caribbean Min-Mart', plus: '5QXW+WJ6', note: 'Shop · D301', aliases: ['Caribbean', 'Min-Mart', 'Minimart'] },
+      { name: 'Kaoma District Hospital', plus: '5GQ65QVX+W5', note: 'Health', aliases: ['Kaoma Hospital', 'Hospital'] },
+      { name: 'Kaoma Central Police Station', plus: '5QQW+6XC', note: 'Police', aliases: ['Police', 'Police Station'] },
+      { name: 'Kaoma District Health Office', plus: '6Q5X+58F', note: 'Off Freedom Way', aliases: ['DHO', 'Health Office'] },
+      { name: 'Kaoma Secondary School', plus: '6R23+9CV', note: 'School', aliases: ['Kaoma Secondary', 'Kaoma Sec'] },
+      { name: 'Pumulo Parkway Lodge', plus: '5RF3+WV3', note: 'Lodge · D301', aliases: ['Pumulo Lodge', 'Pumulo'] },
+      { name: 'Kaoma Main Apostolic Church', plus: '5RX5+WW2', note: 'Church', aliases: ['Apostolic Church'] },
+      // from the government facilities list (about 40 km from town) - please verify on a map
+      { name: 'Mangango Mission Hospital', lat: -14.6446, lng: 24.4638, note: 'Hospital · outside town', aliases: ['Mangango'] },
+
+      // ---- batch 2: Plus Codes from Google Maps ----
+      { name: 'Kaoma College of Nursing', plus: '6Q5X+PJ', note: 'Education', aliases: ['College of Nursing', 'Nursing College'] }, // written as 6Q5K+PJ (K is not a valid character), corrected to X - please confirm
+      { name: 'Kaoma Prison', plus: '6Q4X+MC', note: 'Security', aliases: ['Prison', 'Correctional Facility'] },
+      { name: 'KEG (Kutwa Executive Garden)', plus: '6R92+V2W', note: 'Garden', aliases: ['KEG', 'Kutwa', 'Kutwas', 'Kutwa Executive Garden'] },
+      { name: 'ZESCO Main Office', plus: '6Q2Q+CRP', note: 'Office', aliases: ['ZESCO Office'] },
+      { name: 'Pentecostal Church', plus: '5QXV+R87', note: 'Church', aliases: ['Pentecostal'] },
+      { name: 'Boma', plus: '5QXV+9P', note: 'Government offices' },
+      { name: 'Kaoma Post Office', plus: '5QXW+MV', note: 'Post office', aliases: ['Post Office'] },
+      { name: 'UCZ Church', plus: '6Q3X+6J6', note: 'Church', aliases: ['UCZ', 'United Church of Zambia'] },
+      { name: 'ECZ Office', plus: '6Q6W+9F8', note: 'Office', aliases: ['ECZ'] },
+      { name: 'JW', plus: '5QWR+8X' },                                   // name to confirm
+      { name: 'Indom', plus: '5RJ4+Q7' },                                // name to confirm (written "Indom?")
+      { name: 'Faith Land', plus: '5RJ5+F6' },                           // written as 5RJS+F6 (S is not a valid character), corrected to 5 - please confirm
+      { name: 'Kunyanda Musebi', plus: '5RP5+WJ' },                      // name to confirm (written "KUNYANDA MUSEBI?")
+
+      // ---- areas (neighbourhoods): add a central Plus Code to each when you have it ----
+      { name: 'Zesco Compound', kind: 'area', aliases: ['Zesco Camp', 'Zesco'] },
+      { name: 'Kalingalinga', kind: 'area' },
+      { name: 'Mulambwa', kind: 'area', plus: '5QMX+PP' },
+      { name: 'Mulamba', kind: 'area' },
+
+      // ---- names only for now (no pin until a code is added) ----
+      { name: 'Kaoma Airport', note: 'Airport', aliases: ['Airport'] },
+      { name: 'Puma Energy Kaoma', note: 'Fuel · Lusaka–Mongu Road', aliases: ['Puma'] },
+      { name: 'Kaoma Town Council', note: 'Civic Centre Drive', aliases: ['Town Council', 'Council'] },
+      { name: "Mumu's Chalets Garden Lodge", plus: '5RH3+CP', note: 'Lodge · D301', aliases: ["Mumu's Chalets", "Mumu's", 'Mumus'] },
+      { name: 'Choppies', note: 'Shopping' },
+      { name: 'Carnton Builders', note: 'Business' },
+      { name: 'Kacha' },                                         // two possible codes 265 m apart: 6Q4W+FXP or 6Q4V+FXQ - needs rechecking
+      { name: 'APG Milling', note: 'Business' },
+      { name: 'Zhikap General Dealer', note: 'Shopping', aliases: ['Zhikap'] },
+      { name: 'Shalom Restaurant', note: 'Restaurant', aliases: ['Shalom'] },
+      { name: 'Endrone Fuel Stop', note: 'Fuel', aliases: ['Endrone'] },
+      { name: "Mak's Guest Villas", note: 'Accommodation', aliases: ["Mak's", 'Maks Guest Villas'] },
+      { name: 'Pono Guest House', note: 'Accommodation', aliases: ['Pono'] },
+      { name: "Phiri's Guest House", note: 'Accommodation', aliases: ['Phiri Guest House'] },
+      { name: 'Farmers Rendezvous Lodge', note: 'Accommodation', aliases: ['Farmers Rendezvous'] },
+      { name: 'Lwambu Lodge', note: 'Accommodation', aliases: ['Lwambu'] },
+      { name: 'Mbombolelwa Inns', note: 'Accommodation', aliases: ['Mbombolelwa'] },
+      { name: 'Kaoma District Administration', note: 'Government', aliases: ['District Administration', 'DC Office'] },
+      { name: 'Kaoma Farmers Market', note: 'Market', aliases: ['Farmers Market'] },
+      { name: "Kaoma Women's Centre", note: 'Community', aliases: ["Women's Centre", 'Womens Centre'] },
+      { name: 'Maranatha Grassroots Institute', note: 'Education · Kahare Street', aliases: ['Maranatha'] },
+      { name: 'Nkoya-Mbwela Royal Foundation Museum', note: 'Culture', aliases: ['Museum', 'Nkoya Museum'] },
+      { name: 'Kaoma Central SDA Church', note: 'Church', aliases: ['SDA Church', 'SDA'] },   // 6RQQ+V6H lands about 6 km from town - needs rechecking
+      { name: 'Luena Barracks', note: 'Security', aliases: ['Luena'] },
+      { name: 'Shamyim Private School', note: 'Education', aliases: ['Shamyim'] },
+      { name: 'Kaoma Trades', note: 'Business' },                // code 5R?M+CJ4 has a missing character - needs rechecking
+      { name: 'Pep Zambia', note: 'Shopping', aliases: ['Pep'] },
+      { name: 'Chitwa Primary School', note: 'Education · outside town', aliases: ['Chitwa'] },
+      { name: 'Kalumwange Clinic', note: 'Health · outside town', aliases: ['Kalumwange'] },
+      { name: 'Kashanu Health Post', note: 'Health', aliases: ['Kashanu'] },
+      { name: 'Naliele Palace', note: 'Culture · Kaoma District', aliases: ['Naliele'] }
+    ];
+
+    const LANDMARKS = LANDMARK_LIST.map(l => {
+      let lat = l.lat, lng = l.lng;
+      if (l.plus) {
+        const c = OLC.decodeNear(l.plus, KAOMA.lat, KAOMA.lng);
+        if (c) { lat = c.lat; lng = c.lng; }
+      }
+      if (lat != null && lng != null && (!isFinite(lat) || !isFinite(lng) || Math.abs(lat - KAOMA.lat) > 1 || Math.abs(lng - KAOMA.lng) > 1)) {
+        // a bad code or a typo: keep the name as a suggestion but do not trust the pin
+        console.warn('Landmark pin ignored (check its code/coordinates):', l.name);
+        lat = null; lng = null;
+      }
+      return {
+        name: l.name, kind: l.kind || 'place', note: l.note || '',
+        lat: lat == null ? null : lat, lng: lng == null ? null : lng,
+        keys: [l.name, ...(l.aliases || [])].map(k => k.toLowerCase())
+      };
+    });
+
+    // Names that START with what was typed come first, then names that merely contain it
+    function landmarkMatches(ql) {
+      const starts = l => l.keys.some(k => k.startsWith(ql));
+      return LANDMARKS.filter(l => l.keys.some(k => k.includes(ql)))
+        .sort((a, b) => ((starts(b) ? 1 : 0) - (starts(a) ? 1 : 0)) || a.name.localeCompare(b.name))
+        .map(l => ({
+          name: l.name, kind: l.kind, lat: l.lat, lng: l.lng,
+          detail: [l.kind === 'area' ? 'Area' : null, l.note].filter(Boolean).join(' · ') || 'Saved place'
+        }));
+    }
+
+    let map = null, mapInitialized = false;
+    let fallbackTimer = null, expireTimer = null;
+    let rideUnsubscribe = null;
+    let currentRideId = null;
+    let agreedPrice = null;
+    let lastRideStatus = '';
+    const bids = new Map();       // active bids from drivers on my current request
+    let selectedBidId = null;
+    let unsubBids = null;
+    let accepting = false;
+    const seenOffers = {};
+    let historySavedFor = null;
+    let lastTripCard = '';
+    let userPhone = "";
+    let passengerName = "Passenger";
+    let googleUser = null;
+    let activeDriverMarker = null;
+    const pins = { pickup: null, dest: null };
+
+    const $ = id => document.getElementById(id);
+    const states = ['formState', 'searchState', 'listState', 'fallbackState', 'tripState'];
+
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+      del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    };
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const telHref = p => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+
+    function showState(id) {
+      states.forEach(s => $(s).classList.add('hidden'));
+      if (id) $(id).classList.remove('hidden');
+      // the card shrinks to fit each stage; the handle only exists while a trip is running
+      const sheet = document.querySelector('#tab-passenger .bottom-sheet');
+      if (sheet) { sheet.dataset.stage = id || ''; delete sheet.dataset.expanded; }
+      const grip = $('sheetGrip');
+      if (grip) { grip.classList.toggle('hidden', id !== 'tripState'); grip.setAttribute('aria-label', 'Show trip details'); }
+      if (id === 'tripState') setTimeout(refocusTrip, 60);
+    }
+
+    // Keep the driver and the pickup (or destination) visible above the smaller card
+    function refocusTrip() {
+      if (!map) return;
+      const pts = [];
+      if (activeDriverMarker) { const ll = activeDriverMarker.getLatLng(); pts.push([ll.lat, ll.lng]); }
+      const target = (lastRideStatus === 'trip_started' || lastRideStatus === 'trip_completed' || lastRideStatus === 'finished') ? pins.dest : pins.pickup;
+      if (target) { const ll = target.getLatLng(); pts.push([ll.lat, ll.lng]); }
+      focusMap(pts);
+    }
+
+    document.addEventListener('click', e => {
+      const grip = e.target.closest && e.target.closest('#sheetGrip');
+      if (!grip) return;
+      const sheet = document.querySelector('#tab-passenger .bottom-sheet');
+      const open = sheet.dataset.expanded !== 'true';
+      if (open) sheet.dataset.expanded = 'true'; else delete sheet.dataset.expanded;
+      grip.setAttribute('aria-label', open ? 'Hide trip details' : 'Show trip details');
+      setTimeout(refocusTrip, 60);
+    });
+
+    // --- FLOW NAVIGATION ---
+    function startAuthFlow() {
+      $('landingPage').classList.add('hidden');
+      $('authContainer').style.display = 'flex';
+    }
+
+    // ==========================================
+    // MAP HELPERS
+    // ==========================================
+    function initMap() {
+      if (mapInitialized) { if (map) map.invalidateSize(); return; }
+      mapInitialized = true;
+      try {
+        map = L.map('map', { zoomControl: false, attributionControl: false }).setView([KAOMA.lat, KAOMA.lng], 14);
+        L.tileLayer(MAP_TILES, { maxZoom: 19 }).addTo(map);
+        setTimeout(() => map && map.invalidateSize(), 300);
+      } catch (e) {
+        console.warn('Map unavailable:', e);
+        map = null;
+      }
+      setupAutocomplete('pickup', 'pickupAC', 'pickup');
+      setupAutocomplete('dest', 'destAC', 'dest');
+    }
+
+    function pinIcon(kind) {
+      return L.divIcon({ className: '', html: `<div class="pin-marker ${kind === 'dest' ? 'dest' : ''}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
+    }
+    function clearPin(kind) {
+      if (pins[kind]) { pins[kind].remove(); pins[kind] = null; }
+    }
+    function setPin(kind, lat, lng) {
+      if (!map) return;
+      clearPin(kind);
+      pins[kind] = L.marker([lat, lng], { icon: pinIcon(kind), interactive: false }).addTo(map);
+    }
+    function focusMap(points) {
+      if (!map || !points.length) return;
+      map.invalidateSize();
+      const sheet = document.querySelector('#tab-passenger .bottom-sheet');
+      const maxPad = map.getSize().y * 0.6;
+      const bottom = Math.min((sheet ? sheet.offsetHeight : 0) + 20, maxPad);
+      map.flyToBounds(L.latLngBounds(points), { paddingTopLeft: [30, 80], paddingBottomRight: [30, bottom], maxZoom: 16, duration: 0.8 });
+    }
+    function focusSelected() {
+      const pts = [];
+      ['pickup', 'dest'].forEach(id => {
+        const el = $(id);
+        if (el.dataset.lat) pts.push([parseFloat(el.dataset.lat), parseFloat(el.dataset.lng)]);
+      });
+      focusMap(pts);
+    }
+
+    // ==========================================
+    // PLACE SEARCH (OpenStreetMap / Nominatim)
+    // ==========================================
+    async function searchPlaces(q, signal) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=zm&viewbox=${SEARCH_BOX}&bounded=1&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      return data.map(d => {
+        const parts = String(d.display_name || '').split(',');
+        return {
+          name: ((d.name || parts[0]) + '').trim(),
+          detail: parts.slice(1, 3).join(',').trim(),
+          lat: parseFloat(d.lat),
+          lng: parseFloat(d.lon)
+        };
+      }).filter(p => p.name && isFinite(p.lat) && isFinite(p.lng));
+    }
+
+    function setupAutocomplete(inputId, listId, kind) {
+      const input = $(inputId), list = $(listId);
+      let timer = null, ctrl = null, seq = 0, items = [];
+      const hide = () => list.classList.remove('show');
+
+      function render(q, remote, loading) {
+        // 1) saved places/areas first, 2) live map results (Kaoma only); at most 5 suggestions
+        const seen = new Set();
+        items = [];
+        const add = p => { const k = p.name.toLowerCase(); if (!seen.has(k)) { seen.add(k); items.push(p); } };
+        landmarkMatches(q.toLowerCase()).forEach(add);
+        remote.forEach(add);
+        items = items.slice(0, 5);
+
+        let html = items.map((p, i) =>
+          `<div class="ac-item" data-i="${i}">${esc(p.name)}${p.detail ? `<span class="ac-detail">${esc(p.detail)}</span>` : ''}</div>`
+        ).join('');
+        if (loading) html += '<div class="ac-item ac-note">Searching…</div>';
+        else if (!items.length) html = `<div class="ac-item ac-note">No map match for "${esc(q)}". It will be sent to the driver exactly as typed.</div>`;
+        list.innerHTML = html;
+        list.classList.add('show');
+      }
+
+      function choose(p) {
+        seq++;
+        if (ctrl) ctrl.abort();
+        clearTimeout(timer);
+        input.value = p.name;
+        hide();
+        clearPin(kind);
+        delete input.dataset.lat; delete input.dataset.lng;
+        input.dataset.place = p.name;          // remembers which place was chosen
+        input.dataset.ptype = p.kind || 'place';
+        // Names without coordinates are still sent to the driver as text, just without a pin
+        if (p.lat != null) {
+          input.dataset.lat = p.lat;
+          input.dataset.lng = p.lng;
+          setPin(kind, p.lat, p.lng);
+          focusSelected();
+        }
+      }
+
+      input.addEventListener('input', () => {
+        const chosen = input.dataset.place;
+        if (chosen && input.value.toLowerCase().startsWith(chosen.toLowerCase())) {
+          // Still the chosen place, with extra details added (e.g. "Kalingalinga, blue gate"): keep its pin
+          seq++;
+          clearTimeout(timer);
+          if (ctrl) ctrl.abort();
+          hide();
+          return;
+        }
+        // The name itself was changed, so the earlier choice no longer applies
+        delete input.dataset.lat; delete input.dataset.lng;
+        delete input.dataset.place; delete input.dataset.ptype;
+        clearPin(kind);
+        clearTimeout(timer);
+        if (ctrl) ctrl.abort();
+        const q = input.value.trim();
+        if (!q) { seq++; hide(); return; }
+        render(q, [], q.length >= 3);
+        if (q.length < 3) return;
+        const my = ++seq;
+        timer = setTimeout(async () => {
+          ctrl = new AbortController();
+          try {
+            const r = await searchPlaces(q, ctrl.signal);
+            if (my === seq) render(q, r, false);
+          } catch (e) {
+            if (e.name !== 'AbortError' && my === seq) render(q, [], false);
+          }
+        }, 400);
+      });
+
+      list.addEventListener('mousedown', e => e.preventDefault());
+      list.addEventListener('click', e => {
+        const el = e.target.closest('.ac-item[data-i]');
+        if (el && items[+el.dataset.i]) choose(items[+el.dataset.i]);
+      });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') hide(); });
+      input.addEventListener('blur', () => setTimeout(hide, 200));
+    }
+
+    // ==========================================
+    // AUTH FLOW
+    // ==========================================
+    const PHONE_RE = /^(?:\+?260|0)?([579]\d{8})$/;   // 05x, 07x, 09x mobile ranges (e.g. 057, 076, 097)
+    function normalizePhone(v) {
+      const m = String(v).replace(/[\s\-()]/g, '').match(PHONE_RE);
+      return m ? '+260' + m[1] : null;
+    }
+
+    $('googleBtn').onclick = async () => {
+      const btn = $('googleBtn');
+      btn.disabled = true;
+      try {
+        const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        googleUser = result.user;
+      } catch (e) {
+        if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
+          btn.disabled = false;
+          return;
+        }
+        console.warn('Google sign-in unavailable, continuing as guest:', e && e.code);
+      }
+      btn.disabled = false;
+      $('googleScreen').classList.add('hidden');
+      $('phoneScreen').classList.add('active');
+    };
+    $('backBtn').onclick = () => { $('googleScreen').classList.remove('hidden'); $('phoneScreen').classList.remove('active'); };
+
+    $('termsCheck').onchange = validateSignup;
+    $('signupPhone').oninput = validateSignup;
+
+    function validateSignup() {
+      const raw = $('signupPhone').value.trim();
+      const ok = !!normalizePhone(raw);
+      $('signupBtn').disabled = !(ok && $('termsCheck').checked);
+      $('signupMsg').textContent = (raw.length >= 9 && !ok) ? 'Enter a valid Zambian number, e.g. +260 97 123 4567' : '';
+    }
+
+    function enterApp() {
+      const name = (googleUser && googleUser.displayName) || store.get('kmr_name_g') || 'User';
+      $('profilePhone').textContent = userPhone;
+      $('profileName').textContent = name;
+      $('profileAvatar').textContent = name.trim().charAt(0).toUpperCase() || 'U';
+      $('landingPage').classList.add('hidden');
+      $('authContainer').style.display = 'none';
+      $('mainApp').style.display = 'flex';
+      $('bottomNav').style.display = 'flex';
+      initMap();
+      renderHistory();
+    }
+
+    $('signupBtn').onclick = () => {
+      const phone = normalizePhone($('signupPhone').value.trim());
+      if (!phone) return;
+      userPhone = phone;
+      passengerName = (googleUser && googleUser.displayName) || 'Passenger';
+      store.set('kmr_phone', userPhone);
+      store.set('kmr_name', passengerName);
+      store.set('kmr_name_g', (googleUser && googleUser.displayName) || '');
+      enterApp();
+    };
+
+    $('signoutBtn').onclick = () => {
+      cancelRide(); // resets the screen and cancels any live request
+      store.del('kmr_phone'); store.del('kmr_name'); store.del('kmr_name_g'); store.del('kmr_ride');
+      try { firebase.auth().signOut(); } catch (e) {}
+      googleUser = null; userPhone = ''; passengerName = 'Passenger';
+      $('authContainer').style.display = 'none';
+      $('mainApp').style.display = 'none';
+      $('bottomNav').style.display = 'none';
+      $('landingPage').classList.remove('hidden');
+      $('signupPhone').value = '';
+      $('termsCheck').checked = false;
+      $('signupBtn').disabled = true;
+      $('signupMsg').textContent = '';
+      $('googleScreen').classList.remove('hidden');
+      $('phoneScreen').classList.remove('active');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === 'tab-passenger'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === 'tab-passenger'));
+    };
+
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        $(el.dataset.tab).classList.add('active');
+        if (el.dataset.tab === 'tab-passenger' && map) setTimeout(() => map.invalidateSize(), 100);
+        if (el.dataset.tab === 'tab-profile') renderHistory();
+      });
+    });
+
+    // ==========================================
+    // GPS
+    // ==========================================
+    $('locateBtn').onclick = () => {
+      const btn = $('locateBtn'), msg = $('formMsg');
+      const done = () => { btn.textContent = "Use My Current Location"; btn.disabled = false; };
+      btn.textContent = "Getting location...";
+      btn.disabled = true;
+      msg.style.color = 'var(--muted)';
+      msg.textContent = "Requesting GPS...";
+
+      if (!navigator.geolocation) {
+        msg.style.color = 'var(--danger)';
+        msg.textContent = "Geolocation not supported.";
+        done();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          const pickupEl = $('pickup');
+          pickupEl.dataset.lat = lat;
+          pickupEl.dataset.lng = lng;
+          $('pickupAC').classList.remove('show');
+          setPin('pickup', lat, lng);
+          focusSelected();
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lng}`)
+            .then(res => res.json())
+            .then(data => {
+              pickupEl.value = data.name || (data.display_name ? data.display_name.split(',')[0] : `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+              msg.textContent = "";
+              pickupEl.dataset.place = pickupEl.value; pickupEl.dataset.ptype = 'gps';
+            })
+            .catch(() => { pickupEl.value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`; pickupEl.dataset.place = pickupEl.value; pickupEl.dataset.ptype = 'gps'; msg.textContent = ""; })
+            .finally(done);
+        },
+        (error) => {
+          done();
+          msg.style.color = 'var(--danger)';
+          msg.textContent = error.code === 1 ? "Permission denied." : "Location unavailable.";
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    };
+
+    // ==========================================
+    // RIDE HELPERS
+    // ------------------------------------------
+    // Data model shared with the driver app:
+    //   rides/{rideId}           status: searching -> accepted -> driver_arrived -> trip_started
+    //                            -> trip_completed -> finished (or cancelled / expired)
+    //   bids/{rideId}_{driverId} one document PER driver, so bids never overwrite each other
+    //   drivers/{driverId}       profile + online / busy
+    // ==========================================
+    function friendlyError(e) {
+      const m = e && e.message;
+      if (m === 'RIDE_TAKEN') return 'This request is no longer open.';
+      if (m === 'OFFER_CHANGED') return 'That driver just changed the price. Check the latest offer.';
+      if (m === 'BID_GONE') return 'That driver withdrew their offer.';
+      if (m === 'DRIVER_BUSY') return 'That driver just took another ride. Pick another driver.';
+      return 'Could not send (' + ((e && (e.code || e.message)) || 'error') + '). Check your connection and try again.';
+    }
+
+    function showWaitingError(err) {
+      console.error('Firestore listener error:', err);
+      const p = document.querySelector('#searchState p');
+      if (p) {
+        p.textContent = "Can't read driver offers (" + ((err && (err.code || err.message)) || 'error') + "). Check your Firestore rules for the bids collection.";
+        p.style.color = 'var(--danger)';
+      }
+    }
+
+    // Assigns the ride atomically: only succeeds while the ride is still 'searching' and the price matches
+    function acceptBidTx(rideId, driverId, expectedOffer) {
+      const rideRef = db.collection('rides').doc(rideId);
+      const bidRef = db.collection('bids').doc(rideId + '_' + driverId);
+      const drvRef = db.collection('drivers').doc(driverId);
+      return db.runTransaction(async tx => {
+        const rs = await tx.get(rideRef);
+        const bs = await tx.get(bidRef);
+        const ds = await tx.get(drvRef);
+        if (!rs.exists || rs.data().status !== 'searching') throw new Error('RIDE_TAKEN');
+        if (!bs.exists || !bs.data().active) throw new Error('BID_GONE');
+        const b = bs.data();
+        if (b.driverOffer !== expectedOffer) throw new Error('OFFER_CHANGED');
+        const d = ds.exists ? ds.data() : {};
+        if (d.busy === true && d.currentRideId !== rideId) throw new Error('DRIVER_BUSY');
+        tx.update(rideRef, {
+          status: 'accepted', driverId,
+          driverName: d.fullName || b.driverName, driverCar: d.car || b.driverCar,
+          driverPlate: d.plate || b.driverPlate, driverPhone: d.phone || b.driverPhone,
+          driverOffer: b.driverOffer, agreedPrice: expectedOffer,
+          driverActive: true, acceptedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tx.update(bidRef, { status: 'accepted', active: false });
+        tx.set(drvRef, { busy: true, currentRideId: rideId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      });
+    }
+
+    // Counter-offer to ONE driver's bid (only if the price the passenger saw is still current)
+    function counterBidTx(rideId, bidId, seenOffer, offer) {
+      const rideRef = db.collection('rides').doc(rideId);
+      const bidRef = db.collection('bids').doc(bidId);
+      return db.runTransaction(async tx => {
+        const rs = await tx.get(rideRef);
+        const bs = await tx.get(bidRef);
+        if (!rs.exists || rs.data().status !== 'searching') throw new Error('RIDE_TAKEN');
+        if (!bs.exists || !bs.data().active) throw new Error('BID_GONE');
+        if (bs.data().driverOffer !== seenOffer) throw new Error('OFFER_CHANGED');
+        tx.update(bidRef, { passengerOffer: offer, status: 'countered', updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+    }
+
+    function cancelRideTx(id) {
+      const ref = db.collection('rides').doc(id);
+      return db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists) return;
+        const r = s.data();
+        if (!['searching', 'accepted', 'driver_arrived', 'trip_started'].includes(r.status)) return;
+        tx.update(ref, { status: 'cancelled', driverActive: false });
+        if (r.driverId) tx.set(db.collection('drivers').doc(r.driverId), { busy: false, currentRideId: null }, { merge: true });
+      });
+    }
+
+    function clearTimers() {
+      clearTimeout(fallbackTimer); clearTimeout(expireTimer);
+      fallbackTimer = null; expireTimer = null;
+    }
+
+    function startTimers() {
+      clearTimers();
+      const id = currentRideId;
+      fallbackTimer = setTimeout(async () => {
+        if (id !== currentRideId || bids.size > 0) return;
+        try {
+          const d = await db.collection('rides').doc(id).get();
+          if (id !== currentRideId || bids.size > 0) return;
+          const r = d.data();
+          if (r && r.status === 'searching') loadFallbackDrivers();
+        } catch (e) { console.warn(e); }
+      }, 90000);
+
+      expireTimer = setTimeout(() => {
+        if (id !== currentRideId) return;
+        if (!$('searchState').classList.contains('hidden') && bids.size === 0) {
+          cancelRide();
+          alert("No drivers available. Please try again later.");
+        }
+      }, 120000);
+    }
+
+    // ==========================================
+    // REQUEST RIDE
+    // ==========================================
+    $('requestBtn').onclick = async () => {
+      if (currentRideId) return;
+      if (!navigator.onLine) {
+        $('formMsg').style.color = 'var(--danger)';
+        $('formMsg').textContent = "You're offline. Reconnect to request a ride.";
+        return;
+      }
+      const pickupEl = $('pickup'), destEl = $('dest');
+      const pickup = pickupEl.value.trim();
+      const dest = destEl.value.trim();
+      if (!pickup || !dest) {
+        $('formMsg').style.color = 'var(--danger)';
+        $('formMsg').textContent = "Please enter pickup and destination.";
+        return;
+      }
+      $('formMsg').textContent = "";
+      const btn = $('requestBtn');
+      btn.disabled = true;
+
+      try {
+        // Typed places that were not found on the map are still sent as text; coordinates are optional
+        const rideRef = await db.collection("rides").add({
+          passengerName: passengerName,
+          passengerPhone: userPhone,
+          passengerUid: googleUser ? googleUser.uid : null,
+          pickup: pickup,
+          destination: dest,
+          pickupLat: num(pickupEl.dataset.lat),
+          pickupLng: num(pickupEl.dataset.lng),
+          pickupKind: pickupEl.dataset.ptype || null,
+          destLat: num(destEl.dataset.lat),
+          destLng: num(destEl.dataset.lng),
+          destKind: destEl.dataset.ptype || null,
+          status: "searching",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        currentRideId = rideRef.id;
+        store.set('kmr_ride', currentRideId);
+        accepting = false;
+        $('tlPickup').textContent = pickup;
+        $('tlDest').textContent = dest;
+
+        showState('searchState');
+        startTimers();
+        attachRideListener(currentRideId);
+      } catch (error) {
+        $('formMsg').style.color = 'var(--danger)';
+        $('formMsg').textContent = "Error: " + error.message;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ==========================================
+    // LIVE UPDATES: the ride itself + every driver's bid
+    // ==========================================
+    function attachRideListener(id) {
+      if (rideUnsubscribe) rideUnsubscribe();
+      rideUnsubscribe = db.collection("rides").doc(id).onSnapshot(doc => {
+        if (id !== currentRideId) return;
+        const ride = doc.data();
+        if (!ride) return;
+        handleRide(ride);
+      }, err => showWaitingError(err));
+      attachBids(id);
+    }
+
+    function attachBids(rideId) {
+      stopBids();
+      unsubBids = db.collection('bids').where('rideId', '==', rideId).onSnapshot(snap => {
+        if (rideId !== currentRideId) return;
+        bids.clear();
+        snap.forEach(d => {
+          const b = d.data();
+          if (b.active && b.status !== 'accepted') bids.set(d.id, { id: d.id, ...b });
+        });
+        onBidsChanged();
+      }, err => showWaitingError(err));
+    }
+
+    function stopBids() {
+      if (unsubBids) { unsubBids(); unsubBids = null; }
+    }
+
+    function onBidsChanged() {
+      if (!unsubBids) return;
+      if (!$('tripState').classList.contains('hidden')) return;
+
+      if (bids.size === 0) {
+        if (!accepting && !$('listState').classList.contains('hidden')) { showState('searchState'); startTimers(); }
+        return;
+      }
+
+      clearTimers();
+      if ($('listState').classList.contains('hidden')) showState('listState');
+      if (!bids.has(selectedBidId)) {
+        selectedBidId = [...bids.values()].sort((a, b) => a.driverOffer - b.driverOffer)[0].id;
+      }
+
+      // Tell the passenger when a driver changes their price
+      bids.forEach(b => {
+        if (seenOffers[b.id] !== undefined && seenOffers[b.id] !== b.driverOffer) {
+          $('negotiationMsg').style.color = 'var(--muted)';
+          $('negotiationMsg').textContent = `${b.driverName || 'A driver'} changed their price to K${b.driverOffer}.`;
+        }
+        seenOffers[b.id] = b.driverOffer;
+      });
+      renderBids();
+    }
+
+    function renderBids() {
+      const list = [...bids.values()].sort((a, b) => a.driverOffer - b.driverOffer);
+      $('bidList').innerHTML = list.map(b => `
+        <div class="driver-card" data-id="${esc(b.id)}" style="cursor:pointer; border-color:${b.id === selectedBidId ? 'var(--ink)' : 'var(--line)'};">
+          <div class="dc-header" style="margin-bottom:0;">
+            <div class="dc-avatar">${esc((b.driverName || 'D').charAt(0).toUpperCase())}</div>
+            <div class="dc-info">
+              <h4>${esc(b.driverName || 'Driver')}</h4>
+              <p>${esc([b.driverCar, b.driverPlate].filter(Boolean).join(' · '))}</p>
+              ${b.status === 'countered' && b.passengerOffer != null ? `<p style="color:var(--lime-dark);">Your offer: K${esc(b.passengerOffer)} · waiting for reply</p>` : ''}
+            </div>
+            <div style="margin-left:auto; font-size: 20px; font-weight: 800;">K${esc(b.driverOffer)}</div>
+          </div>
+        </div>`).join('');
+      const sel = bids.get(selectedBidId);
+      $('acceptBidBtn').textContent = sel ? `Accept K${sel.driverOffer} from ${sel.driverName || 'driver'}` : "Accept Driver's Offer";
+    }
+
+    $('bidList').onclick = e => {
+      const card = e.target.closest('[data-id]');
+      if (!card) return;
+      selectedBidId = card.dataset.id;
+      $('negotiationMsg').textContent = '';
+      renderBids();
+    };
+
+    const STAGES = {
+      accepted: ["Driver is on the way", "Please wait at your pickup location"],
+      driver_arrived: ["Driver has arrived", "Meet your driver outside"],
+      trip_started: ["On the way to destination", "Enjoy your ride"],
+      trip_completed: ["Trip Completed", "Thank you for riding with KM Rides"],
+      finished: ["Trip Completed", "Thank you for riding with KM Rides"]
+    };
+
+    function handleRide(ride) {
+      const st = ride.status;
+      if (ride.pickup) $('tlPickup').textContent = ride.pickup;
+      if (ride.destination) $('tlDest').textContent = ride.destination;
+
+      if (st === 'searching') {
+        // Resuming an open request after a page reload
+        if (!$('formState').classList.contains('hidden')) { showState('searchState'); startTimers(); }
+        return;
+      }
+
+      if (STAGES[st]) {
+        lastRideStatus = st;
+        clearTimers();
+        stopBids();
+        accepting = false;
+        if ($('tripState').classList.contains('hidden')) showState('tripState');
+        agreedPrice = ride.agreedPrice != null ? ride.agreedPrice : ride.driverOffer;
+
+        const card = `
+          <div class="dc-header" style="margin-bottom:0;">
+            <div class="dc-avatar">${esc((ride.driverName || 'D').charAt(0).toUpperCase())}</div>
+            <div class="dc-info">
+              <h4>${esc(ride.driverName || 'Driver')}</h4>
+              <p>${esc([ride.driverCar, ride.driverPlate].filter(Boolean).join(' · '))}</p>
+            </div>
+            <div style="margin-left:auto; font-size: 18px; font-weight: 800;">K${esc(agreedPrice)}</div>
+          </div>`;
+        if (card !== lastTripCard) { $('tripDriverCard').innerHTML = card; lastTripCard = card; }
+        $('callDriverBtn').href = telHref(ride.driverPhone);
+
+        $('tripTitle').textContent = STAGES[st][0];
+        $('stageTitle').textContent = STAGES[st][0];
+        $('stageSub').textContent = STAGES[st][1];
+
+        // Pins and driver marker
+        const pLat = num(ride.pickupLat), pLng = num(ride.pickupLng);
+        const dLat = num(ride.destLat), dLng = num(ride.destLng);
+        if (map) {
+          if (pLat != null && !pins.pickup) setPin('pickup', pLat, pLng);
+          if (dLat != null && !pins.dest) setPin('dest', dLat, dLng);
+          const drvLat = num(ride.driverLat), drvLng = num(ride.driverLng);
+          if (drvLat != null && drvLng != null) {
+            if (!activeDriverMarker) {
+              const driverIcon = L.divIcon({ className: '', html: '<div class="driver-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+              activeDriverMarker = L.marker([drvLat, drvLng], { icon: driverIcon }).addTo(map);
+              const pts = [[drvLat, drvLng]];
+              if (pLat != null) pts.push([pLat, pLng]);
+              focusMap(pts);
+            } else {
+              activeDriverMarker.setLatLng([drvLat, drvLng]);
+            }
+          }
+        }
+
+        if (st === 'trip_completed' || st === 'finished') {
+          store.del('kmr_ride');
+          saveHistory(ride);
+          $('cancelTripBtn').textContent = "Done";
+          $('cancelTripBtn').onclick = () => resetPassengerApp();
+        }
+        return;
+      }
+
+      if (st === 'cancelled' || st === 'expired') {
+        resetPassengerApp();
+        $('formMsg').style.color = 'var(--danger)';
+        $('formMsg').textContent = st === 'expired' ? 'Request expired. Please try again.' : 'This ride was cancelled.';
+      }
+    }
+
+    // ==========================================
+    // ACCEPT / COUNTER-OFFER (applies to the selected driver)
+    // ==========================================
+    $('acceptBidBtn').onclick = async () => {
+      const sel = bids.get(selectedBidId);
+      if (!currentRideId || !sel) return;
+      const btn = $('acceptBidBtn'), msg = $('negotiationMsg');
+      btn.disabled = true;
+      accepting = true;
+      msg.style.color = 'var(--muted)';
+      msg.textContent = 'Confirming...';
+      try {
+        await acceptBidTx(currentRideId, sel.driverId, sel.driverOffer);
+      } catch (e) {
+        accepting = false;
+        msg.style.color = 'var(--danger)';
+        msg.textContent = friendlyError(e);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    $('sendCounterOfferBtn').onclick = async () => {
+      const msg = $('negotiationMsg'), btn = $('sendCounterOfferBtn');
+      const sel = bids.get(selectedBidId);
+      const offer = parseInt($('counterOfferInput').value, 10);
+      if (!currentRideId || !sel) return;
+      if (!offer || offer < 10 || offer > 100000) {
+        msg.style.color = 'var(--danger)';
+        msg.textContent = "Enter a valid amount (min K10).";
+        return;
+      }
+      msg.style.color = 'var(--muted)';
+      msg.textContent = "Sending counter-offer...";
+      btn.disabled = true;
+
+      try {
+        await counterBidTx(currentRideId, sel.id, sel.driverOffer, offer);
+        $('counterOfferInput').value = '';
+        msg.textContent = `Offer of K${offer} sent to ${sel.driverName || 'the driver'}. Waiting for their reply.`;
+      } catch (e) {
+        msg.style.color = 'var(--danger)';
+        msg.textContent = friendlyError(e);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ==========================================
+    // FALLBACK DRIVERS
+    // ==========================================
+    async function loadFallbackDrivers() {
+      showState('fallbackState');
+      const container = $('fallbackList');
+      container.innerHTML = '<p style="color:var(--muted);">Searching registered drivers...</p>';
+
+      try {
+        const snapshot = await db.collection("drivers").limit(3).get();
+        if (snapshot.empty) {
+          container.innerHTML = '<p style="color:var(--danger);">No registered drivers found.</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const el = document.createElement('div');
+          el.className = 'fallback-card';
+          el.innerHTML = `
+            <div>
+              <div style="font-weight:800; font-size:15px;">${esc(d.fullName || 'Driver')}</div>
+              <div style="font-size:12px; color:var(--muted); font-weight:600;">${esc([d.car, d.plate].filter(Boolean).join(' · '))}</div>
+            </div>
+            <a href="${esc(telHref(d.phone))}" class="call-btn-sm">📞 Call</a>
+          `;
+          container.appendChild(el);
+        });
+      } catch (e) {
+        container.innerHTML = `<p style="color:var(--danger);">Error: ${esc(e.message)}</p>`;
+      }
+    }
+
+    // ==========================================
+    // CANCEL & RESET
+    // ==========================================
+    function cancelRide() {
+      const id = currentRideId;
+      resetPassengerApp();
+      if (id) cancelRideTx(id).catch(e => console.warn('Cancel not applied:', e.message));
+    }
+    $('cancelTripBtn').onclick = cancelRide;
+
+    function resetPassengerApp() {
+      clearTimers();
+      if (rideUnsubscribe) { rideUnsubscribe(); rideUnsubscribe = null; }
+      stopBids();
+      bids.clear();
+      selectedBidId = null;
+      accepting = false;
+      Object.keys(seenOffers).forEach(k => delete seenOffers[k]);
+      $('bidList').innerHTML = '';
+      if (activeDriverMarker) { activeDriverMarker.remove(); activeDriverMarker = null; }
+      clearPin('pickup'); clearPin('dest');
+
+      showState('formState');
+      $('formMsg').textContent = '';
+      ['pickup', 'dest'].forEach(id => {
+        const el = $(id);
+        el.value = '';
+        delete el.dataset.lat; delete el.dataset.lng; delete el.dataset.place; delete el.dataset.ptype;
+      });
+      $('pickupAC').classList.remove('show');
+      $('destAC').classList.remove('show');
+      $('counterOfferInput').value = '';
+      $('negotiationMsg').textContent = '';
+      $('sendCounterOfferBtn').disabled = false;
+      $('acceptBidBtn').disabled = false;
+      $('acceptBidBtn').textContent = "Accept Driver's Offer";
+      $('requestBtn').disabled = false;
+      if (map) map.flyTo([KAOMA.lat, KAOMA.lng], 14);
+
+      agreedPrice = null;
+      lastRideStatus = '';
+      currentRideId = null;
+      lastTripCard = '';
+      store.del('kmr_ride');
+
+      $('tripTitle').textContent = 'Driver is on the way';
+      $('cancelTripBtn').textContent = "Cancel Ride";
+      $('cancelTripBtn').onclick = cancelRide;
+    }
+
+    // ==========================================
+    // RIDE HISTORY (stored on this device)
+    // ==========================================
+    function saveHistory(ride) {
+      if (historySavedFor === currentRideId) return;
+      historySavedFor = currentRideId;
+      const key = 'kmr_history_' + userPhone;
+      let list = [];
+      try { list = JSON.parse(store.get(key) || '[]'); } catch (e) {}
+      list.unshift({ pickup: ride.pickup, dest: ride.destination, price: agreedPrice, driver: ride.driverName || '', at: Date.now() });
+      store.set(key, JSON.stringify(list.slice(0, 20)));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const box = $('rideHistory');
+      let list = [];
+      try { list = JSON.parse(store.get('kmr_history_' + userPhone) || '[]'); } catch (e) {}
+      if (!list.length) {
+        box.innerHTML = '<div style="color: var(--muted); font-weight: 600; font-size: 13px;">No rides taken yet.</div>';
+        return;
+      }
+      box.innerHTML = list.map(r => `
+        <div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px;">
+          <div style="display:flex; justify-content:space-between; gap:12px; font-weight:800; font-size:14px;">
+            <span>${esc(r.pickup)} → ${esc(r.dest)}</span><span>K${esc(r.price)}</span>
+          </div>
+          <div style="font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;">
+            ${esc(new Date(r.at).toLocaleDateString())}${r.driver ? ' · ' + esc(r.driver) : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    // ==========================================
+    // RESUME AFTER RELOAD
+    // ==========================================
+    async function tryResume() {
+      const phone = store.get('kmr_phone');
+      const rideId = store.get('kmr_ride');
+      if (phone) { $('signupPhone').value = phone; validateSignup(); }
+      if (!phone || !rideId) return;
+      try {
+        const doc = await db.collection('rides').doc(rideId).get();
+        const r = doc.exists ? doc.data() : null;
+        if (!r || ['cancelled', 'expired', 'trip_completed', 'finished'].includes(r.status)) { store.del('kmr_ride'); return; }
+        userPhone = phone;
+        passengerName = store.get('kmr_name') || 'Passenger';
+        enterApp();
+        $('pickup').value = r.pickup || '';
+        $('dest').value = r.destination || '';
+        currentRideId = rideId;
+        attachRideListener(rideId);
+      } catch (e) {
+        console.warn('Could not resume ride:', e);
+      }
+    }
+    // ==========================================
+    // PWA: version, offline notice and updates
+    // ==========================================
+    const APP_VERSION = '1.0.0';   // keep identical to VERSION in sw.js
+
+    (function setupPWA() {
+      const ver = $('appVersion');
+      if (ver) ver.textContent = 'KM Rides v' + APP_VERSION;
+
+      const bar = $('offlineBar');
+      const syncOnline = () => { if (bar) bar.classList.toggle('hidden', navigator.onLine); };
+      window.addEventListener('online', syncOnline);
+      window.addEventListener('offline', syncOnline);
+      syncOnline();
+
+      if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost')) return;
+
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        // only reload when an UPDATE was applied, never on the very first install
+        if (!hadController || reloading) return;
+        reloading = true;
+        location.reload();
+      });
+
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        const offerUpdate = worker => {
+          const toast = $('updateToast');
+          if (!toast) return;
+          toast.classList.remove('hidden');
+          $('updateBtn').onclick = () => { $('updateBtn').disabled = true; worker.postMessage({ type: 'SKIP_WAITING' }); };
+        };
+        if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const w = reg.installing;
+          if (!w) return;
+          w.addEventListener('statechange', () => {
+            if (w.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(w);
+          });
+        });
+        const check = () => reg.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+        setInterval(check, 30 * 60 * 1000);
+      }).catch(e => console.warn('Service worker not registered:', e));
+    })();
+
+    tryResume();
+  </script>
+</body>
+</html>
